@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { View, Text, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import { View, ActivityIndicator, Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import "react-native-get-random-values"; // Required for WatermelonDB
@@ -11,6 +11,10 @@ import { initializeDatabase } from "@storage/database";
 // Import screens
 import AssetListScreen from "@screens/AssetListScreen";
 import AssetFormScreen from "@screens/AssetFormScreen";
+
+// Import global styles and styled components
+import { colors, spacing, typography } from "./src/styles";
+import { StyledView, StyledText } from "./src/components/StyledComponents";
 
 // Navigation types
 export type RootStackParamList = {
@@ -65,19 +69,35 @@ export default function App() {
   };
 
   const renderLoadingScreen = () => (
-    <View style={styles.centerContainer}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={styles.loadingText}>Initializing Buildist...</Text>
-      <Text style={styles.subText}>Setting up offline storage</Text>
-    </View>
+    <StyledView
+      center
+      style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}
+    >
+      <ActivityIndicator size="large" color={colors.primary.main} />
+      <StyledText variant="h4" style={{ marginTop: spacing.md }}>
+        Initializing Buildist...
+      </StyledText>
+      <StyledText variant="bodySmall" center style={{ marginTop: spacing.sm }}>
+        Setting up offline storage
+      </StyledText>
+    </StyledView>
   );
 
   const renderErrorScreen = () => (
-    <View style={styles.centerContainer}>
-      <Text style={styles.errorTitle}>Initialization Failed</Text>
-      <Text style={styles.errorMessage}>{appState.error}</Text>
-      <Text style={styles.subText}>Please restart the application</Text>
-    </View>
+    <StyledView
+      center
+      style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}
+    >
+      <StyledText variant="h3" color="error" center style={{ marginBottom: spacing.md }}>
+        Initialization Failed
+      </StyledText>
+      <StyledText variant="body" center style={{ marginBottom: spacing.md }}>
+        {appState.error}
+      </StyledText>
+      <StyledText variant="bodySmall" center>
+        Please restart the application
+      </StyledText>
+    </StyledView>
   );
 
   const renderMainApp = () => (
@@ -86,11 +106,11 @@ export default function App() {
         initialRouteName="AssetList"
         screenOptions={{
           headerStyle: {
-            backgroundColor: "#007AFF",
+            backgroundColor: colors.primary.main,
           },
-          headerTintColor: "#fff",
+          headerTintColor: colors.text.inverse,
           headerTitleStyle: {
-            fontWeight: "bold",
+            fontWeight: typography.fontWeight.bold,
           },
         }}
       >
@@ -115,50 +135,11 @@ export default function App() {
   );
 
   return (
-    <View style={styles.container}>
+    <StyledView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <StatusBar style="light" />
       {appState.isLoading && renderLoadingScreen()}
       {appState.error && renderErrorScreen()}
       {appState.isReady && renderMainApp()}
-    </View>
+    </StyledView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-    backgroundColor: "#f5f5f5",
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginTop: 16,
-  },
-  subText: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 8,
-    textAlign: "center",
-  },
-  errorTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#FF3B30",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  errorMessage: {
-    fontSize: 16,
-    color: "#333",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-});
