@@ -6,22 +6,75 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false"
   },
   "dependencies": {
+    "@babel/plugin-proposal-decorators": "^7.28.0",
+    "@nozbe/watermelondb": "^0.28.0",
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/native-stack": "^7.3.24",
     "expo": "~53.0.20",
+    "expo-barcode-scanner": "^13.0.1",
+    "expo-camera": "^16.1.11",
     "expo-status-bar": "~2.2.3",
+    "openai": "^5.12.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
-    "react-native-screens": "~4.11.1",
-    "react-native-safe-area-context": "5.4.0"
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@morrowdigital/watermelondb-expo-plugin": "^2.3.3",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.2.2",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.0.10",
+    "expo-build-properties": "^0.14.8",
+    "jest": "^30.0.5",
+    "react-test-renderer": "^19.0.0",
     "typescript": "~5.8.3"
+  },
+  "jest": {
+    "preset": "react-native",
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/setup.ts"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@react-native|react-native|@nozbe/watermelondb|@react-navigation)/)"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@components/(.*)$": "<rootDir>/src/components/$1",
+      "^@screens/(.*)$": "<rootDir>/src/screens/$1",
+      "^@storage/(.*)$": "<rootDir>/src/storage/$1",
+      "^@types/(.*)$": "<rootDir>/src/types/$1",
+      "^@utils/(.*)$": "<rootDir>/src/utils/$1"
+    },
+    "testMatch": [
+      "<rootDir>/__tests__/**/*.(test|spec).(ts|tsx|js|jsx)",
+      "<rootDir>/src/**/__tests__/**/*.(test|spec).(ts|tsx|js|jsx)"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 75,
+        "functions": 80,
+        "lines": 80
+      }
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/__tests__/**",
+      "!src/**/*.test.{ts,tsx}"
+    ]
   },
   "private": true
 }

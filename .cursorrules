@@ -1,0 +1,144 @@
+# Buildist Project Guidelines
+
+## Project Overview
+
+Buildist is an **Asset Management Tool** - a React Native app with a comprehensive global styling system. This is Phase 1: Barebones Demo (Proof of Concept) for an offline-capable asset management platform.
+
+**Project Context:**
+
+- **Phase**: Barebones Demo (Proof of Concept)
+- **Objective**: Demonstrate core vision to funders, pilot partners, and early adopters
+- **Timeline**: 4-week development cycle
+- **Tech Stack**: Expo + React Native, WatermelonDB with SQLite, OpenAI API integration
+
+**Core Features to Implement:**
+
+- Offline Asset Entry Form (single asset type: Road)
+- AI Prompt Input parsing
+- Basic Admin Login
+- Preloaded Demo Assets (1-2 example records)
+- Asset List View with filtering
+- Local-only operation (offline-first)
+- Minimal UI Design (wireframe-level)
+
+Always follow these guidelines when working with code, styling, and components.
+
+## Styling System - CRITICAL
+
+- **ALWAYS use our design token system** from `@styles` instead of hardcoded values
+- **NEVER use numbered color tokens** like `colors.primary[500]` - use descriptive names instead:
+  - ✅ `colors.primary.main` (not `colors.primary[500]`)
+  - ✅ `colors.neutral.lightest` (not `colors.neutral[50]`)
+  - ✅ `colors.success.dark` (not `colors.success[700]`)
+- **Use semantic color mappings** when available:
+  - `colors.text.primary` for main text
+  - `colors.background.primary` for main backgrounds
+  - `colors.border.light` for borders
+- **Follow the spacing scale**: Base unit is 4px (xs: 4px, sm: 8px, md: 16px, lg: 24px, xl: 32px, 2xl: 48px)
+
+## Component Architecture
+
+- **Use StyledComponents** from `@components/StyledComponents` instead of creating new styled components
+- **Prefer semantic props** over custom styles:
+  - `<StyledView center card>` instead of custom flexbox styles
+  - `<StyledText variant="h3" center>` instead of custom text styles
+- **Place styled components** in `src/components/StyledComponents.tsx`
+- **Use TypeScript interfaces** for all component props
+
+## File Organization
+
+- **Styles**: Keep all styling logic in `src/styles/`
+- **Components**: Place reusable styled components in `src/components/StyledComponents.tsx`
+- **Theme**: Use `src/styles/theme.ts` for semantic color mappings
+- **Tokens**: Use `src/styles/tokens.ts` for raw design values
+
+## Code Quality Standards
+
+- **Use semantic naming**: Variables and functions should clearly describe their purpose
+- **Include proper TypeScript types** for all props and state
+- **Follow React Native best practices** for performance and accessibility
+- **Use consistent formatting**: Prefer double quotes for strings, proper spacing
+- **NEVER use React.FC** - Use explicit function declarations with proper prop types instead
+
+## Styling Patterns
+
+- **Combine styles with arrays**: `style={[layoutStyles.card, layoutStyles.m3, customStyle]}`
+- **Use common styles**: Leverage `layoutStyles`, `textStyles`, `buttonStyles` from `@styles`
+- **Avoid inline styles** when common styles exist
+- **Use design tokens** for all measurements, colors, and typography
+
+## Component Usage Examples
+
+```typescript
+// ✅ Good - Use styled components with semantic props
+<StyledView center card>
+  <StyledText variant="h3">Title</StyledText>
+  <StyledText variant="body">Description</StyledText>
+  <StyledButton variant="primary" onPress={handlePress}>
+    Action
+  </StyledButton>
+</StyledView>
+
+// ❌ Bad - Avoid inline styles and hardcoded values
+<View style={{
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 16,
+  backgroundColor: '#f5f5f5'
+}}>
+  <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Title</Text>
+</View>
+```
+
+## Testing Requirements
+
+- **Include unit tests** for new components
+- **Test styled component variants** and props
+- **Verify design token usage** in tests
+
+## Performance Considerations
+
+- **Use StyleSheet.create** for common styles
+- **Avoid creating styles in render functions**
+- **Leverage React.memo** for styled components when appropriate
+
+## Accessibility
+
+- **Support accessibility props** in all styled components
+- **Ensure color contrast** meets WCAG requirements
+- **Use semantic color mappings** for different states
+
+## When Adding New Features
+
+- **Check existing patterns** in the codebase first
+- **Extend the design system** rather than creating custom solutions
+- **Update documentation** in `src/styles/README.md` for new patterns
+- **Follow established naming conventions** for consistency
+
+Remember: The goal is to maintain a consistent, maintainable design system that scales with the project. Always prefer the established patterns over custom solutions.
+
+## Project-Specific Requirements
+
+### Asset Management Features
+
+- **Focus on Road assets** for Phase 1 (single asset type)
+- **Implement offline-first architecture** using WatermelonDB with SQLite
+- **Create AI prompt parser** for natural language asset entry
+- **Build simple admin authentication** (hardcoded or basic login gate)
+- **Include demo data seeding** with 1-2 example road records
+
+### Technical Architecture
+
+- **Use Expo + React Native** for mobile-first development
+- **Implement WatermelonDB** for local data storage and offline capability
+- **Focus on local data storage** (no backend integration in Phase 1)
+- **Integrate OpenAI API** for prompt-to-field logic
+- **Keep UI minimal** - wireframe-level design, not visual polish
+
+### Development Priorities
+
+- **Week 1**: Scope finalization, wireframes, sample data
+- **Week 2**: Login, asset entry form, list view
+- **Week 3**: Prompt parser integration, demo data seeding
+- **Week 4**: Polish, offline testing, demo preparation
