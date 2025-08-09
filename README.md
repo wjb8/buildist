@@ -1,222 +1,140 @@
-# 🏗️ Buildist - Asset Management & Inspection Platform
+# Buildist - Asset Management Tool
 
-A React Native/Expo application designed for asset management and inspection tracking, with offline-first capabilities powered by WatermelonDB.
+> **Phase 1: Barebones Demo (Proof of Concept)**
 
-## 📋 Project Overview
+A React Native mobile application for offline-capable asset management, designed to demonstrate core functionality to funders, pilot partners, and early adopters.
 
-**Buildist** is an enterprise-grade asset management application that enables field workers to track equipment, perform inspections, and maintain compliance records - all while working offline. The platform provides real-time asset visibility, automated maintenance scheduling, and comprehensive audit trails.
+## 🎯 Project Overview
 
-## 🗄️ Database Architecture
+**Buildist** is an asset management platform that enables communities to track, manage, and maintain their infrastructure assets. The platform focuses on creating a credible, functional proof-of-concept that showcases the core vision.
 
-### **Current Status: Database Schema & Data Models Complete**
+### Key Objectives
 
-We've established the foundational database structure for tracking assets and their inspection history using WatermelonDB with SQLite.
+- Demonstrate offline-capable asset management
+- Showcase AI-powered natural language input
+- Provide a functional demo for stakeholder presentations
+- Establish the foundation for future development phases
 
-#### **Database Tables**
+## 🚀 Core Features (Phase 1)
 
-##### **1. Assets Table**
+### Asset Management
 
-**Purpose**: Central repository for all physical assets across the organization
+- **Single Asset Type**: Road assets (expandable in future phases)
+- **Offline Entry Form**: Add/edit road assets with local data storage
+- **Asset List View**: Simple, filterable list of entered assets
+- **Demo Data**: Preloaded example records for demonstration
 
-**Key Fields**:
+### AI Integration
 
-- **Type**: Equipment, Vehicle, Building, Furniture, Tool, or Other
-- **Name**: Asset identifier (e.g., "Forklift #5", "Warehouse A")
-- **Location**: Where the asset is currently located
-- **Condition**: Current health status (Excellent, Good, Fair, Poor, Critical)
-- **Notes**: Additional context or special instructions
-- **QR Tag ID**: Unique identifier for scanning and tracking
-- **Sync Status**: Tracks whether data has been uploaded to server
+- **Natural Language Input**: Parse prompts like "Add road Cedar Lane with poor condition"
+- **Auto-form Filling**: Convert prompts to structured asset data
+- **OpenAI API Integration**: Leverage AI for intelligent data parsing
 
-**Business Value**: Single source of truth for all equipment inventory
+### User Experience
 
-##### **2. Inspections Table**
+- **Basic Admin Login**: Simple authentication gate for access control
+- **Offline-First Design**: All operations work without internet connection
+- **Minimal UI**: Wireframe-level design focused on functionality over aesthetics
 
-**Purpose**: Complete audit trail of all asset inspections and maintenance
+## 🏗️ Technical Architecture
 
-**Key Fields**:
+### Frontend
 
-- **Asset Reference**: Links to specific asset being inspected
-- **Inspector**: Who performed the inspection
-- **Description**: What was checked during inspection
-- **Score**: AI-powered rating (1-10 scale)
-- **Maintenance Flag**: Automatic alert when issues detected
-- **Next Due Date**: When next inspection is scheduled
-- **Sync Status**: Ensures offline data gets uploaded
+- **Framework**: Expo + React Native
+- **Language**: TypeScript
+- **Styling**: Custom design system with styled-components
+- **State Management**: Local state + WatermelonDB for persistence
 
-**Business Value**: Compliance tracking, maintenance scheduling, quality assurance
+### Data Layer
 
-#### **Data Validation & Constraints**
+- **Local Storage**: WatermelonDB with SQLite adapter
+- **Offline Capability**: Full offline operation with local data
+- **Scope**: Local-only operation for Phase 1 demo
 
-##### **Asset Types** (Predefined Options)
+### External Services
 
-- **Equipment**: Machinery, production equipment
-- **Vehicle**: Trucks, forklifts, company cars
-- **Building**: Facilities, warehouses, offices
-- **Furniture**: Desks, chairs, storage units
-- **Tool**: Hand tools, power tools
-- **Other**: Miscellaneous items
+- **AI Processing**: OpenAI API for prompt parsing
+- **File Storage**: S3/Backblaze B2 (future implementation)
+- **Push Notifications**: Firebase Cloud Messaging (future use)
 
-##### **Asset Conditions** (Standardized Ratings)
+## 🛠️ Getting Started
 
-- **Excellent**: Like new, no issues
-- **Good**: Minor wear, fully functional
-- **Fair**: Some wear, needs attention soon
-- **Poor**: Significant issues, maintenance required
-- **Critical**: Safety hazard, immediate action needed
+### Prerequisites
 
-## 🚀 Technical Architecture
-
-### **Offline-First Design**
-
-- **Local Storage**: All data stored on device (no internet required)
-- **Sync Ready**: Automatic upload when connection restored
-- **Conflict Resolution**: Built-in handling for data conflicts
-
-### **Performance Features**
-
-- **Indexed Queries**: Fast asset lookups by type, condition, location
-- **Relationship Mapping**: Easy to find all inspections for any asset
-- **Timestamp Tracking**: Complete audit trail of all changes
-
-### **Tech Stack**
-
-- **React Native 0.79.5** with Expo SDK 53
-- **WatermelonDB 0.28.0** for offline database
-- **React Navigation 7** for routing
-- **TypeScript 5.8** for type safety
-- **SQLite** with JSI enabled for performance
-
-## 💼 Business Use Cases Supported
-
-### **Field Operations**
-
-- Inspectors can work offline in remote locations
-- QR code scanning for quick asset identification
-- Real-time condition updates and photo documentation
-
-### **Compliance & Reporting**
-
-- Complete inspection history for regulatory requirements
-- Maintenance scheduling and due date tracking
-- Performance metrics and trend analysis
-
-### **Asset Lifecycle Management**
-
-- Track asset condition over time
-- Plan maintenance and replacement schedules
-- Optimize asset utilization and placement
-
-## 🎯 Development Roadmap
-
-### **Phase 1: Core Functionality** (In Progress)
-
-- Database schema and models
-- Basic asset CRUD operations
-- Navigation structure
-- Asset listing and form screens
-
-### **Phase 2: Enhanced Features** (Planned)
-
-- QR code scanning integration
-- Photo/document attachment
-- Advanced filtering and search
-- Inspection workflow
-
-### **Phase 3: AI & Analytics** (Planned)
-
-- Automated condition assessment
-- Predictive maintenance alerts
-- Performance analytics dashboard
-- Advanced reporting
-
-## 🔧 Project Structure
-
-```
-src/
-├── storage/           # Database layer
-│   ├── database.ts    # Database configuration
-│   ├── schema.ts      # SQLite schema definition
-│   └── models/        # WatermelonDB models
-│       ├── Asset.ts   # Asset data model
-│       └── Inspection.ts # Inspection data model
-├── types/             # TypeScript type definitions
-│   └── models.ts      # Enums and interfaces
-├── screens/           # App screens
-│   ├── AssetListScreen.tsx
-│   └── AssetFormScreen.tsx
-├── components/        # Reusable UI components
-├── utils/             # Helper functions
-└── api/               # Backend integration (planned)
-```
-
-## 🚀 Getting Started
-
-### **Prerequisites**
-
-- Node.js 18+
+- Node.js (v18 or higher)
 - Expo CLI
-- iOS Simulator or Android Emulator
+- React Native development environment
+- iOS Simulator / Android Emulator
 
-### **Installation**
+### Installation
 
 ```bash
+# Clone the repository
+git clone [repository-url]
+cd buildist
+
 # Install dependencies
 npm install
 
-# Start development server
+# Start the development server
 npm start
-
-# Run on iOS
-npm run ios
-
-# Run on Android
-npm run android
 ```
 
-### **Database Operations**
+### Environment Setup
 
-```typescript
-// Import database and collections
-import { database, collections } from "@storage/database";
+```bash
+# Copy environment template
+cp .env.example .env
 
-// Query assets
-const assets = await collections.assets.query().fetch();
-
-// Create new asset
-await collections.assets.create((asset) => {
-  asset.type = AssetType.EQUIPMENT;
-  asset.name = "New Equipment";
-  asset.condition = AssetCondition.GOOD;
-});
-
-// Reset database (development only)
-import { resetDatabase } from "@storage/database";
-await resetDatabase();
+# Add your OpenAI API key
+OPENAI_API_KEY=your_api_key_here
 ```
+
+## 🎨 Design System
+
+Buildist uses a design token system for consistent styling:
+
+- **Colors**: Semantic color mappings (primary, neutral, success, warning, error)
+- **Typography**: Consistent font sizes and weights
+- **Spacing**: 4px base unit system (xs, sm, md, lg, xl, 2xl)
+- **Components**: Reusable styled components with semantic props
+
+See `src/styles/README.md` for detailed styling guidelines.
 
 ## 🧪 Testing
 
-The project includes comprehensive testing setup with Jest:
+### Running Tests
 
-- **Coverage Threshold**: 80% statements, 75% branches, 80% functions
-- **Test Commands**: `npm test`, `npm run test:watch`, `npm run test:coverage`
+```bash
+# Run all tests
+npm test
 
-## 📱 Key Benefits for Stakeholders
+# Run tests in watch mode
+npm run test:watch
 
-- **Operations Teams**: Real-time asset visibility, offline capability
-- **Maintenance**: Proactive scheduling, issue tracking
-- **Compliance**: Complete audit trails, regulatory reporting
-- **Management**: Asset utilization insights, cost optimization
+# Run tests with coverage
+npm run test:coverage
+```
 
-## 🔮 Future Enhancements
+## 🚀 Deployment
 
-- **Real-time Sync**: Multi-device synchronization
-- **Advanced Analytics**: Predictive maintenance algorithms
-- **Integration**: ERP system connectivity
-- **Mobile Features**: GPS tracking, photo documentation
-- **Reporting**: Custom dashboard creation
+### Development Build
 
----
+```bash
+# iOS
+npm run ios
 
-This foundation gives us a robust, scalable platform that can grow with your asset management needs while maintaining data integrity and offline reliability.
+# Android
+npm run android
+
+# Web (if needed)
+npm run web
+```
+
+### Production Build
+
+```bash
+# Build for production
+expo build:android
+expo build:ios
+```
