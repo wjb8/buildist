@@ -670,7 +670,7 @@ export const textStyles = StyleSheet.create({
 
 ```typescript
 // In StyledComponents.tsx
-export const StyledIcon: React.FC<StyledIconProps> = ({ ... }) => {
+export const StyledIcon = ({ ... }: StyledIconProps) => {
   // Implementation
 };
 ```

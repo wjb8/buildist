@@ -39,7 +39,7 @@ interface FormErrors {
   condition?: string;
 }
 
-const AssetFormScreen: React.FC = () => {
+const AssetFormScreen = () => {
   const navigation = useNavigation<AssetFormNavigationProp>();
   const route = useRoute<AssetFormRouteProp>();
   const { assetId } = route.params || {};

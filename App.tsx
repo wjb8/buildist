@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator, Alert } from "react-native";
+import { ActivityIndicator, Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import "react-native-get-random-values"; // Required for WatermelonDB
@@ -14,7 +14,7 @@ import AssetFormScreen from "@screens/AssetFormScreen";
 
 // Import global styles and styled components
 import { colors, spacing, typography } from "./src/styles";
-import { StyledView, StyledText } from "./src/components/StyledComponents";
+import { View, Text } from "./src/components";
 
 // Navigation types
 export type RootStackParamList = {
@@ -69,35 +69,29 @@ export default function App() {
   };
 
   const renderLoadingScreen = () => (
-    <StyledView
-      center
-      style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}
-    >
+    <View center style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}>
       <ActivityIndicator size="large" color={colors.primary.main} />
-      <StyledText variant="h4" style={{ marginTop: spacing.md }}>
+      <Text variant="h4" style={{ marginTop: spacing.md }}>
         Initializing Buildist...
-      </StyledText>
-      <StyledText variant="bodySmall" center style={{ marginTop: spacing.sm }}>
+      </Text>
+      <Text variant="bodySmall" center style={{ marginTop: spacing.sm }}>
         Setting up offline storage
-      </StyledText>
-    </StyledView>
+      </Text>
+    </View>
   );
 
   const renderErrorScreen = () => (
-    <StyledView
-      center
-      style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}
-    >
-      <StyledText variant="h3" color="error" center style={{ marginBottom: spacing.md }}>
+    <View center style={{ padding: spacing.xl, backgroundColor: colors.background.secondary }}>
+      <Text variant="h3" color="error" center style={{ marginBottom: spacing.md }}>
         Initialization Failed
-      </StyledText>
-      <StyledText variant="body" center style={{ marginBottom: spacing.md }}>
+      </Text>
+      <Text variant="body" center style={{ marginBottom: spacing.md }}>
         {appState.error}
-      </StyledText>
-      <StyledText variant="bodySmall" center>
+      </Text>
+      <Text variant="bodySmall" center>
         Please restart the application
-      </StyledText>
-    </StyledView>
+      </Text>
+    </View>
   );
 
   const renderMainApp = () => (
@@ -135,11 +129,11 @@ export default function App() {
   );
 
   return (
-    <StyledView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <StatusBar style="light" />
       {appState.isLoading && renderLoadingScreen()}
       {appState.error && renderErrorScreen()}
       {appState.isReady && renderMainApp()}
-    </StyledView>
+    </View>
   );
 }

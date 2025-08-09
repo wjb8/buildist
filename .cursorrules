@@ -116,14 +116,6 @@ Always follow these guidelines when working with code, styling, and components.
 - **Update documentation** in `src/styles/README.md` for new patterns
 - **Follow established naming conventions** for consistency
 
-## Common Mistakes to Avoid
-
-- ❌ Using numbered color tokens (`colors.primary[500]`)
-- ❌ Creating inline styles when common styles exist
-- ❌ Hardcoding colors, spacing, or typography values
-- ❌ Placing styled components outside of `StyledComponents.tsx`
-- ❌ Using generic View/Text when StyledView/StyledText would be more appropriate
-
 Remember: The goal is to maintain a consistent, maintainable design system that scales with the project. Always prefer the established patterns over custom solutions.
 
 ## Project-Specific Requirements

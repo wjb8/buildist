@@ -34,7 +34,7 @@ interface AssetItemProps {
   onPress: () => void;
 }
 
-const AssetItem: React.FC<AssetItemProps> = ({ asset, onPress }) => {
+const AssetItem = ({ asset, onPress }: AssetItemProps) => {
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -81,7 +81,7 @@ const AssetItem: React.FC<AssetItemProps> = ({ asset, onPress }) => {
   );
 };
 
-const AssetListScreen: React.FC<AssetListScreenProps> = ({ assets }) => {
+const AssetListScreen = ({ assets }: AssetListScreenProps) => {
   const navigation = useNavigation<AssetListNavigationProp>();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<AssetType | "">("");

@@ -18,7 +18,7 @@ export const renderWithProviders = (
   const { initialRouteName = "Test", navigationParams = {}, ...renderOptions } = options;
 
   // Mock navigation container for testing
-  const TestNavigationContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  const TestNavigationContainer = ({ children }: { children: React.ReactNode }) => (
     <NavigationContainer>
       <Stack.Navigator initialRouteName={initialRouteName}>
         <Stack.Screen
