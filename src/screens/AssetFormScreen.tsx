@@ -10,12 +10,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Asset } from "@storage/models";
+import { Road, AssetFactory } from "@storage/models";
 import { collections, database } from "@storage/database";
-import { AssetType, AssetCondition, CreateAssetData, UpdateAssetData } from "@types/models";
+import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-// Navigation types
 type RootStackParamList = {
   AssetList: undefined;
   AssetForm: { assetId?: string };
@@ -26,17 +25,25 @@ type AssetFormRouteProp = RouteProp<RootStackParamList, "AssetForm">;
 
 interface FormData {
   name: string;
-  type: AssetType;
   location: string;
   condition: AssetCondition;
   notes: string;
   qrTagId: string;
+  // Road-specific fields
+  surfaceType: RoadSurfaceType;
+  trafficVolume: TrafficVolume;
+  length: string;
+  width: string;
+  lanes: string;
+  speedLimit: string;
 }
 
 interface FormErrors {
   name?: string;
-  type?: string;
+  location?: string;
   condition?: string;
+  // Road-specific validation errors
+  roadData?: string[];
 }
 
 const AssetFormScreen = () => {
@@ -46,44 +53,60 @@ const AssetFormScreen = () => {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [asset, setAsset] = useState<Asset | null>(null);
+  const [road, setRoad] = useState<Road | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: "",
-    type: AssetType.EQUIPMENT,
     location: "",
     condition: AssetCondition.GOOD,
     notes: "",
     qrTagId: "",
+    // Road-specific fields
+    surfaceType: RoadSurfaceType.ASPHALT,
+    trafficVolume: TrafficVolume.LOW,
+    length: "",
+    width: "",
+    lanes: "",
+    speedLimit: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
   const isEditMode = Boolean(assetId);
 
-  // Load asset data for editing
+  // Load road data for editing
   useEffect(() => {
     if (assetId) {
-      loadAsset();
+      loadRoad();
     } else {
-      // Generate QR tag ID for new assets
+      // Generate QR tag ID for new roads
       generateQRTagId();
     }
   }, [assetId]);
 
-  const loadAsset = async () => {
+  const loadRoad = async () => {
     try {
       setLoading(true);
-      const foundAsset = await collections.assets.find(assetId!);
-      setAsset(foundAsset);
+      const foundRoad = await collections.roads.find(assetId!);
+
+      // Use AssetFactory to create the road
+      const typedRoad = AssetFactory.createRoad(foundRoad);
+      setRoad(typedRoad);
+
       setFormData({
-        name: foundAsset.name,
-        type: foundAsset.type,
-        location: foundAsset.location || "",
-        condition: foundAsset.condition,
-        notes: foundAsset.notes || "",
-        qrTagId: foundAsset.qrTagId || "",
+        name: typedRoad.name,
+        location: typedRoad.location || "",
+        condition: typedRoad.condition,
+        notes: typedRoad.notes || "",
+        qrTagId: typedRoad.qrTagId || "",
+        // Road-specific fields
+        surfaceType: typedRoad.surfaceType,
+        trafficVolume: typedRoad.trafficVolume,
+        length: typedRoad.length?.toString() || "",
+        width: typedRoad.width?.toString() || "",
+        lanes: typedRoad.lanes?.toString() || "",
+        speedLimit: typedRoad.speedLimit?.toString() || "",
       });
     } catch (error) {
-      Alert.alert("Error", "Failed to load asset");
+      Alert.alert("Error", "Failed to load road");
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -92,8 +115,7 @@ const AssetFormScreen = () => {
 
   const generateQRTagId = () => {
     const timestamp = Date.now().toString(36);
-    const typePrefix = formData.type.substring(0, 3).toUpperCase();
-    const qrTagId = `${typePrefix}-${timestamp}`;
+    const qrTagId = `ROA-${timestamp}`;
     setFormData((prev) => ({ ...prev, qrTagId }));
   };
 
@@ -101,19 +123,54 @@ const AssetFormScreen = () => {
     const newErrors: FormErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Asset name is required";
-    }
-
-    if (!formData.type) {
-      newErrors.type = "Asset type is required";
+      newErrors.name = "Road name is required";
     }
 
     if (!formData.condition) {
-      newErrors.condition = "Asset condition is required";
+      newErrors.condition = "Road condition is required";
+    }
+
+    // Road-specific validation
+    const roadValidation = validateRoadData();
+    if (!roadValidation.isValid) {
+      newErrors.roadData = roadValidation.errors;
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateRoadData = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!formData.surfaceType) {
+      errors.push("Surface type is required");
+    }
+
+    if (!formData.trafficVolume) {
+      errors.push("Traffic volume is required");
+    }
+
+    if (formData.length && parseFloat(formData.length) <= 0) {
+      errors.push("Length must be positive");
+    }
+
+    if (formData.width && parseFloat(formData.width) <= 0) {
+      errors.push("Width must be positive");
+    }
+
+    if (formData.lanes && parseInt(formData.lanes) <= 0) {
+      errors.push("Number of lanes must be positive");
+    }
+
+    if (formData.speedLimit && parseFloat(formData.speedLimit) <= 0) {
+      errors.push("Speed limit must be positive");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   };
 
   const handleSave = async () => {
@@ -124,37 +181,49 @@ const AssetFormScreen = () => {
     try {
       setSaving(true);
 
-      await database.write(async () => {
-        if (isEditMode && asset) {
-          // Update existing asset
-          await asset.update((asset) => {
-            asset.name = formData.name.trim();
-            asset.type = formData.type;
-            asset.location = formData.location.trim() || null;
-            asset.condition = formData.condition;
-            asset.notes = formData.notes.trim() || null;
-            asset.qrTagId = formData.qrTagId.trim() || null;
-            asset.synced = false;
-          });
-        } else {
-          // Create new asset
-          await collections.assets.create((asset) => {
-            asset.name = formData.name.trim();
-            asset.type = formData.type;
-            asset.location = formData.location.trim() || null;
-            asset.condition = formData.condition;
-            asset.notes = formData.notes.trim() || null;
-            asset.qrTagId = formData.qrTagId.trim() || null;
-            asset.synced = false;
-          });
-        }
-      });
+      if (isEditMode && road) {
+        // Update existing road
+        await road.update((road) => {
+          road.name = formData.name.trim();
+          road.location = formData.location.trim() || undefined;
+          road.condition = formData.condition;
+          road.notes = formData.notes.trim() || undefined;
+          road.qrTagId = formData.qrTagId.trim() || undefined;
+          // Road-specific fields
+          road.surfaceType = formData.surfaceType;
+          road.trafficVolume = formData.trafficVolume;
+          road.length = formData.length ? parseFloat(formData.length) : undefined;
+          road.width = formData.width ? parseFloat(formData.width) : undefined;
+          road.lanes = formData.lanes ? parseInt(formData.lanes) : undefined;
+          road.speedLimit = formData.speedLimit ? parseFloat(formData.speedLimit) : undefined;
+        });
 
-      Alert.alert("Success", `Asset ${isEditMode ? "updated" : "created"} successfully`, [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+        Alert.alert("Success", "Road updated successfully", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        // Create new road
+        await collections.roads.create((road) => {
+          road.name = formData.name.trim();
+          road.location = formData.location.trim() || undefined;
+          road.condition = formData.condition;
+          road.notes = formData.notes.trim() || undefined;
+          road.qrTagId = formData.qrTagId.trim() || undefined;
+          // Road-specific fields
+          road.surfaceType = formData.surfaceType;
+          road.trafficVolume = formData.trafficVolume;
+          road.length = formData.length ? parseFloat(formData.length) : undefined;
+          road.width = formData.width ? parseFloat(formData.width) : undefined;
+          road.lanes = formData.lanes ? parseInt(formData.lanes) : undefined;
+          road.speedLimit = formData.speedLimit ? parseFloat(formData.speedLimit) : undefined;
+        });
+
+        Alert.alert("Success", "Road created successfully", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (error) {
-      Alert.alert("Error", `Failed to ${isEditMode ? "update" : "create"} asset`);
+      Alert.alert("Error", `Failed to ${isEditMode ? "update" : "create"} road`);
     } finally {
       setSaving(false);
     }
@@ -164,69 +233,81 @@ const AssetFormScreen = () => {
     navigation.goBack();
   };
 
-  const handleTypeChange = (type: AssetType) => {
-    setFormData((prev) => ({ ...prev, type }));
-    // Regenerate QR tag ID when type changes (for new assets only)
-    if (!isEditMode) {
-      const timestamp = Date.now().toString(36);
-      const typePrefix = type.substring(0, 3).toUpperCase();
-      const qrTagId = `${typePrefix}-${timestamp}`;
-      setFormData((prev) => ({ ...prev, qrTagId }));
-    }
-  };
-
-  const renderTypeSelector = () => (
-    <View style={styles.selectorContainer}>
-      <Text style={styles.label}>Asset Type *</Text>
-      <View style={styles.typeGrid}>
-        {Object.values(AssetType).map((type) => (
+  const renderSurfaceTypeSelector = () => (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.label}>Surface Type</Text>
+      <View style={styles.selectorContainer}>
+        {Object.values(RoadSurfaceType).map((type) => (
           <TouchableOpacity
             key={type}
-            style={[styles.typeButton, formData.type === type && styles.typeButtonSelected]}
-            onPress={() => handleTypeChange(type)}
-            testID={`type-${type}`}
+            style={[styles.selectorButton, formData.surfaceType === type && styles.selectedButton]}
+            onPress={() => setFormData((prev) => ({ ...prev, surfaceType: type }))}
           >
             <Text
               style={[
-                styles.typeButtonText,
-                formData.type === type && styles.typeButtonTextSelected,
+                styles.selectorButtonText,
+                formData.surfaceType === type && styles.selectedButtonText,
               ]}
             >
-              {type.replace("_", " ").toUpperCase()}
+              {type.charAt(0).toUpperCase() + type.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
-      {errors.type && <Text style={styles.errorText}>{errors.type}</Text>}
+    </View>
+  );
+
+  const renderTrafficVolumeSelector = () => (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.label}>Traffic Volume</Text>
+      <View style={styles.selectorContainer}>
+        {Object.values(TrafficVolume).map((volume) => (
+          <TouchableOpacity
+            key={volume}
+            style={[
+              styles.selectorButton,
+              formData.trafficVolume === volume && styles.selectedButton,
+            ]}
+            onPress={() => setFormData((prev) => ({ ...prev, trafficVolume: volume }))}
+          >
+            <Text
+              style={[
+                styles.selectorButtonText,
+                formData.trafficVolume === volume && styles.selectedButtonText,
+              ]}
+            >
+              {volume.charAt(0).toUpperCase() + volume.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 
   const renderConditionSelector = () => (
-    <View style={styles.selectorContainer}>
-      <Text style={styles.label}>Condition *</Text>
-      <View style={styles.conditionGrid}>
+    <View style={styles.fieldContainer}>
+      <Text style={styles.label}>Condition</Text>
+      <View style={styles.selectorContainer}>
         {Object.values(AssetCondition).map((condition) => (
           <TouchableOpacity
             key={condition}
             style={[
-              styles.conditionButton,
-              formData.condition === condition && styles.conditionButtonSelected,
+              styles.selectorButton,
+              formData.condition === condition && styles.selectedButton,
             ]}
             onPress={() => setFormData((prev) => ({ ...prev, condition }))}
-            testID={`condition-${condition}`}
           >
             <Text
               style={[
-                styles.conditionButtonText,
-                formData.condition === condition && styles.conditionButtonTextSelected,
+                styles.selectorButtonText,
+                formData.condition === condition && styles.selectedButtonText,
               ]}
             >
-              {condition.toUpperCase()}
+              {condition.charAt(0).toUpperCase() + condition.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
-      {errors.condition && <Text style={styles.errorText}>{errors.condition}</Text>}
     </View>
   );
 
@@ -234,132 +315,191 @@ const AssetFormScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading asset...</Text>
+        <Text style={styles.loadingText}>Loading road...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>{isEditMode ? "Edit Asset" : "Create New Asset"}</Text>
-
-      {/* Asset Name */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Asset Name *</Text>
-        <TextInput
-          style={[styles.input, errors.name && styles.inputError]}
-          value={formData.name}
-          onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
-          placeholder="Enter asset name"
-          testID="name-input"
-        />
-        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{isEditMode ? "Edit Road" : "Create New Road"}</Text>
       </View>
 
-      {/* Asset Type */}
-      {renderTypeSelector()}
+      <View style={styles.form}>
+        {/* Basic Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Basic Information</Text>
 
-      {/* Location */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Location</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.location}
-          onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
-          placeholder="Enter location (optional)"
-          testID="location-input"
-        />
-      </View>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Name *</Text>
+            <TextInput
+              style={[styles.input, errors.name && styles.inputError]}
+              value={formData.name}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
+              placeholder="Enter road name"
+            />
+            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          </View>
 
-      {/* Condition */}
-      {renderConditionSelector()}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Location</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.location}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
+              placeholder="Enter location"
+            />
+          </View>
 
-      {/* Notes */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Notes</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={formData.notes}
-          onChangeText={(text) => setFormData((prev) => ({ ...prev, notes: text }))}
-          placeholder="Enter additional notes (optional)"
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-          testID="notes-input"
-        />
-      </View>
+          {renderConditionSelector()}
 
-      {/* QR Tag ID */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>QR Tag ID</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.qrTagId}
-          onChangeText={(text) => setFormData((prev) => ({ ...prev, qrTagId: text }))}
-          placeholder="QR tag identifier (optional)"
-          testID="qr-tag-input"
-        />
-        <Text style={styles.helperText}>
-          {isEditMode ? "Edit the QR tag ID if needed" : "Auto-generated, but you can customize it"}
-        </Text>
-      </View>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Notes</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.notes}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, notes: text }))}
+              placeholder="Enter notes"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
 
-      {/* Action Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={handleCancel}
-          testID="cancel-button"
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>QR Tag ID</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.qrTagId}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, qrTagId: text }))}
+              placeholder="Auto-generated"
+            />
+          </View>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton, saving && styles.buttonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-          testID="save-button"
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text style={styles.saveButtonText}>{isEditMode ? "Update" : "Create"} Asset</Text>
+        {/* Road-Specific Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Road Specifications</Text>
+
+          {renderSurfaceTypeSelector()}
+          {renderTrafficVolumeSelector()}
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Length (meters)</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.length}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, length: text }))}
+              placeholder="Enter length"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Width (meters)</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.width}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, width: text }))}
+              placeholder="Enter width"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Number of Lanes</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.lanes}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, lanes: text }))}
+              placeholder="Enter number of lanes"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Speed Limit (km/h)</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.speedLimit}
+              onChangeText={(text) => setFormData((prev) => ({ ...prev, speedLimit: text }))}
+              placeholder="Enter speed limit"
+              keyboardType="numeric"
+            />
+          </View>
+
+          {errors.roadData && errors.roadData.length > 0 && (
+            <View style={styles.errorContainer}>
+              {errors.roadData.map((error, index) => (
+                <Text key={index} style={styles.errorText}>
+                  • {error}
+                </Text>
+              ))}
+            </View>
           )}
-        </TouchableOpacity>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.saveButton, saving && styles.disabledButton]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>{isEditMode ? "Update" : "Create"}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
 };
-
-export default AssetFormScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  contentContainer: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
     alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#666",
+    backgroundColor: "#f5f5f5",
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 24,
-    textAlign: "center",
   },
-  inputContainer: {
-    marginBottom: 20,
+  form: {
+    padding: 16,
+  },
+  section: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 15,
+  },
+  fieldContainer: {
+    marginBottom: 15,
   },
   label: {
     fontSize: 16,
@@ -386,73 +526,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  helperText: {
-    color: "#666",
-    fontSize: 12,
-    marginTop: 4,
-  },
   selectorContainer: {
-    marginBottom: 20,
-  },
-  typeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  typeButton: {
+  selectorButton: {
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minWidth: 80,
+    minWidth: 100,
     alignItems: "center",
   },
-  typeButtonSelected: {
+  selectedButton: {
     backgroundColor: "#007AFF",
     borderColor: "#007AFF",
   },
-  typeButtonText: {
-    fontSize: 12,
-    color: "#333",
-    fontWeight: "500",
-  },
-  typeButtonTextSelected: {
-    color: "white",
-  },
-  conditionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  conditionButton: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minWidth: 90,
-    alignItems: "center",
-  },
-  conditionButtonSelected: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
-  },
-  conditionButtonText: {
+  selectorButtonText: {
     fontSize: 14,
     color: "#333",
     fontWeight: "500",
   },
-  conditionButtonTextSelected: {
+  selectedButtonText: {
     color: "white",
   },
   buttonContainer: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 32,
-    marginBottom: 32,
+    justifyContent: "space-around",
+    marginTop: 30,
+    marginBottom: 30,
   },
   button: {
     flex: 1,
@@ -468,7 +573,7 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: "#007AFF",
   },
-  buttonDisabled: {
+  disabledButton: {
     opacity: 0.6,
   },
   cancelButtonText: {
@@ -481,4 +586,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+  },
+  errorContainer: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+  },
 });
+
+export default AssetFormScreen;

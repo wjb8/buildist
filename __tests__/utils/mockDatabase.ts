@@ -1,123 +1,124 @@
-import { AssetType, AssetCondition } from "@/types/models";
+import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
+import { Road } from "@/storage/models/assets/Road";
+import { Inspection } from "@/storage/models/Inspection";
 
-// Mock data factories
-export const createMockAsset = (overrides: Partial<any> = {}) => ({
-  id: "asset-1",
-  type: AssetType.EQUIPMENT,
-  name: "Test Asset",
-  location: "Main Office",
-  condition: AssetCondition.GOOD,
-  notes: "Test notes",
-  qrTagId: "QR-123",
-  createdAt: new Date("2024-01-01"),
-  updatedAt: new Date("2024-01-01"),
-  synced: false,
-  inspections: [],
-  isMaintenanceOverdue: false,
-  lastInspectionDate: null,
-  get conditionScore() {
-    const scores = {
-      [AssetCondition.EXCELLENT]: 5,
-      [AssetCondition.GOOD]: 4,
-      [AssetCondition.FAIR]: 3,
-      [AssetCondition.POOR]: 2,
-      [AssetCondition.CRITICAL]: 1,
-    };
-    return scores[this.condition] || 0;
-  },
-  markAsNeedsMaintenance: jest.fn(),
-  updateCondition: jest.fn(),
-  generateQRTagId: jest.fn(() => Promise.resolve("QR-123")),
-  update: jest.fn(),
-  ...overrides,
-});
+export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
+  const mockRoad = {
+    id: "road-1",
+    name: "Main Street",
+    location: "Downtown",
+    condition: AssetCondition.GOOD,
+    notes: "Primary arterial road",
+    qrTagId: "ROA-123",
+    surfaceType: RoadSurfaceType.ASPHALT,
+    trafficVolume: TrafficVolume.HIGH,
+    length: 1000,
+    width: 12,
+    lanes: 4,
+    speedLimit: 50,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+    synced: true,
 
-export const createMockInspection = (overrides: Partial<any> = {}) => ({
-  id: "inspection-1",
-  assetId: "asset-1",
-  inspector: "John Doe",
-  description: "Test inspection",
-  score: 8,
-  timestamp: new Date("2024-01-01"),
-  maintenanceNeeded: false,
-  nextDue: new Date("2024-02-01"),
-  createdAt: new Date("2024-01-01"),
-  updatedAt: new Date("2024-01-01"),
-  synced: false,
-  asset: createMockAsset(),
-  isOverdue: false,
-  get scoreCategory() {
-    if (this.score >= 9) return "excellent";
-    if (this.score >= 7) return "good";
-    if (this.score >= 5) return "fair";
-    if (this.score >= 3) return "poor";
-    return "critical";
-  },
-  daysUntilDue: 30,
-  scheduleNextInspection: jest.fn(),
-  updateScore: jest.fn(),
-  markMaintenanceComplete: jest.fn(),
-  update: jest.fn(),
-  ...overrides,
-});
+    // Mock methods
+    update: jest.fn(),
+    destroyPermanently: jest.fn(),
 
-// Mock database collections
-export const createMockCollection = (items: any[] = []) => ({
-  query: jest.fn(() => ({
-    fetch: jest.fn(() => Promise.resolve(items)),
-    observe: jest.fn(() => ({
-      subscribe: jest.fn(),
-    })),
-    count: jest.fn(() => Promise.resolve(items.length)),
-  })),
-  create: jest.fn((callback) => {
-    const mockRecord = {};
-    callback(mockRecord);
-    return Promise.resolve(mockRecord);
-  }),
-  find: jest.fn((id) => Promise.resolve(items.find((item) => item.id === id))),
-});
+    // Mock computed properties
+    get isRoadAsset() {
+      return true;
+    },
+    get roadDimensions() {
+      return "1000m × 12m";
+    },
+    get trafficLevel() {
+      return "High traffic (arterial)";
+    },
+    get conditionScore() {
+      return 4;
+    },
+    get maintenancePriority() {
+      return "LOW - Standard maintenance";
+    },
+    get estimatedMaintenanceCost() {
+      return 2000;
+    },
+    get nextInspectionDue() {
+      return new Date("2025-01-01");
+    },
 
-// Mock database instance
-export const createMockDatabase = (assets: any[] = [], inspections: any[] = []) => ({
-  collections: {
-    get: jest.fn((tableName) => {
-      switch (tableName) {
-        case "assets":
-          return createMockCollection(assets);
-        case "inspections":
-          return createMockCollection(inspections);
-        default:
-          return createMockCollection();
-      }
-    }),
-  },
+    validateRoadData() {
+      return {
+        isValid: true,
+        errors: [],
+      };
+    },
+
+    // Mock business logic methods
+    markAsNeedsMaintenance: jest.fn(),
+    updateCondition: jest.fn(),
+    generateQRTagId() {
+      return "ROA-123";
+    },
+
+    // Mock inspections relationship
+    inspections: [],
+
+    ...overrides,
+  } as unknown as Road;
+
+  return mockRoad;
+};
+
+export const createMockRoadList = (count: number = 3): Road[] => {
+  return Array.from({ length: count }, (_, index) => {
+    return createMockRoad({
+      id: `road-${index + 1}`,
+      name: `Road ${index + 1}`,
+      location: `Location ${index + 1}`,
+    });
+  });
+};
+
+export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspection => {
+  const mockInspection = {
+    id: "inspection-1",
+    assetId: "road-1",
+    inspector: "John Doe",
+    description: "Annual road condition assessment",
+    score: 8,
+    timestamp: new Date("2024-01-01"),
+    maintenanceNeeded: false,
+    nextDue: new Date("2025-01-01"),
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+    synced: true,
+
+    update: jest.fn(),
+    destroyPermanently: jest.fn(),
+
+    ...overrides,
+  } as unknown as Inspection;
+
+  return mockInspection;
+};
+
+export const createMockDatabase = () => ({
   write: jest.fn((callback) => callback()),
-  read: jest.fn((callback) => callback()),
-  unsafeResetDatabase: jest.fn(),
+  collections: {
+    roads: {
+      create: jest.fn(),
+      find: jest.fn(),
+      query: jest.fn(() => ({
+        observe: jest.fn(() => []),
+      })),
+    },
+    inspections: {
+      create: jest.fn(),
+      find: jest.fn(),
+      query: jest.fn(() => ({
+        observe: jest.fn(() => []),
+      })),
+    },
+  },
 });
-
-// Helper to create multiple mock assets
-export const createMockAssetList = (count: number = 3) => {
-  return Array.from({ length: count }, (_, index) =>
-    createMockAsset({
-      id: `asset-${index + 1}`,
-      name: `Asset ${index + 1}`,
-      type: Object.values(AssetType)[index % Object.values(AssetType).length],
-      condition: Object.values(AssetCondition)[index % Object.values(AssetCondition).length],
-    })
-  );
-};
-
-// Helper to create multiple mock inspections
-export const createMockInspectionList = (count: number = 3, assetId: string = "asset-1") => {
-  return Array.from({ length: count }, (_, index) =>
-    createMockInspection({
-      id: `inspection-${index + 1}`,
-      assetId,
-      inspector: `Inspector ${index + 1}`,
-      score: Math.floor(Math.random() * 10) + 1,
-      timestamp: new Date(Date.now() - index * 24 * 60 * 60 * 1000), // Each day earlier
-    })
-  );
-};

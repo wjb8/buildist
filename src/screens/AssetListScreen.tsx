@@ -4,20 +4,16 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
+  TextInput,
   RefreshControl,
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { withObservables } from "@nozbe/watermelondb/react";
-import { Q } from "@nozbe/watermelondb";
-import { Asset } from "@storage/models";
-import { collections } from "@storage/database";
-import { AssetType, AssetCondition, AssetFilters } from "../types/models";
+import { Road } from "@storage/models";
+import { AssetCondition, AssetFilters, AssetSortOptions } from "@/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-// Navigation types
 type RootStackParamList = {
   AssetList: undefined;
   AssetForm: { assetId?: string };
@@ -26,245 +22,262 @@ type RootStackParamList = {
 type AssetListNavigationProp = NativeStackNavigationProp<RootStackParamList, "AssetList">;
 
 interface AssetListScreenProps {
-  assets: Asset[];
+  roads: Road[];
 }
 
 interface AssetItemProps {
-  asset: Asset;
+  road: Road;
   onPress: () => void;
 }
 
-const AssetItem = ({ asset, onPress }: AssetItemProps) => {
+const AssetItem: React.FC<AssetItemProps> = ({ road, onPress }) => {
   const getConditionColor = (condition: AssetCondition) => {
-    switch (condition) {
-      case AssetCondition.EXCELLENT:
-        return "#4CAF50";
-      case AssetCondition.GOOD:
-        return "#8BC34A";
-      case AssetCondition.FAIR:
-        return "#FF9800";
-      case AssetCondition.POOR:
-        return "#FF5722";
-      case AssetCondition.CRITICAL:
-        return "#F44336";
-      default:
-        return "#9E9E9E";
-    }
+    const colors = {
+      [AssetCondition.EXCELLENT]: "#4CAF50",
+      [AssetCondition.GOOD]: "#8BC34A",
+      [AssetCondition.FAIR]: "#FFC107",
+      [AssetCondition.POOR]: "#FF9800",
+      [AssetCondition.CRITICAL]: "#F44336",
+    };
+    return colors[condition] || "#666";
   };
 
   return (
-    <TouchableOpacity style={styles.assetItem} onPress={onPress} testID={`asset-item-${asset.id}`}>
+    <TouchableOpacity style={styles.assetItem} onPress={onPress}>
       <View style={styles.assetHeader}>
-        <Text style={styles.assetName}>{asset.name}</Text>
+        <Text style={styles.assetName}>{road.name}</Text>
         <View
-          style={[styles.conditionBadge, { backgroundColor: getConditionColor(asset.condition) }]}
+          style={[styles.conditionBadge, { backgroundColor: getConditionColor(road.condition) }]}
         >
-          <Text style={styles.conditionText}>{asset.condition.toUpperCase()}</Text>
+          <Text style={styles.conditionText}>{road.condition.toUpperCase()}</Text>
         </View>
       </View>
 
-      <Text style={styles.assetType}>{asset.type.replace("_", " ").toUpperCase()}</Text>
+      {road.location && <Text style={styles.assetLocation}>{road.location}</Text>}
 
-      {asset.location && <Text style={styles.assetLocation}>📍 {asset.location}</Text>}
+      {/* Road-specific details */}
+      <View style={styles.roadDetails}>
+        <Text style={styles.roadSpec}>
+          {road.surfaceType} • {road.trafficVolume} traffic
+        </Text>
+        {road.roadDimensions !== "Dimensions not specified" && (
+          <Text style={styles.roadSpec}>{road.roadDimensions}</Text>
+        )}
+        {road.lanes && (
+          <Text style={styles.roadSpec}>
+            {road.lanes} lane{road.lanes > 1 ? "s" : ""}
+          </Text>
+        )}
+        {road.speedLimit && <Text style={styles.roadSpec}>{road.speedLimit} km/h</Text>}
+      </View>
 
-      {asset.notes && (
+      {road.notes && (
         <Text style={styles.assetNotes} numberOfLines={2}>
-          {asset.notes}
+          {road.notes}
         </Text>
       )}
 
       <View style={styles.assetFooter}>
-        <Text style={styles.assetDate}>Created: {asset.createdAt.toLocaleDateString()}</Text>
-        {asset.qrTagId && <Text style={styles.qrTag}>QR: {asset.qrTagId}</Text>}
+        <Text style={styles.assetId}>ID: {road.qrTagId || road.id}</Text>
+        <Text style={styles.assetDate}>{road.createdAt.toLocaleDateString()}</Text>
       </View>
     </TouchableOpacity>
   );
 };
 
-const AssetListScreen = ({ assets }: AssetListScreenProps) => {
+const AssetListScreen: React.FC<AssetListScreenProps> = ({ roads }) => {
   const navigation = useNavigation<AssetListNavigationProp>();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<AssetType | "">("");
   const [filterCondition, setFilterCondition] = useState<AssetCondition | "">("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filter and search assets
-  const filteredAssets = useMemo(() => {
-    return assets.filter((asset) => {
+  const filteredRoads = useMemo(() => {
+    return roads.filter((road) => {
       const matchesSearch =
-        searchQuery === "" ||
-        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (asset.location && asset.location.toLowerCase().includes(searchQuery.toLowerCase()));
+        road.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (road.location && road.location.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesType = filterType === "" || asset.type === filterType;
-      const matchesCondition = filterCondition === "" || asset.condition === filterCondition;
+      const matchesCondition = filterCondition === "" || road.condition === filterCondition;
 
-      return matchesSearch && matchesType && matchesCondition;
+      return matchesSearch && matchesCondition;
     });
-  }, [assets, searchQuery, filterType, filterCondition]);
+  }, [roads, searchQuery, filterCondition]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // In a real app, you might trigger a sync operation here
-    setTimeout(() => setRefreshing(false), 1000);
+  const handleRoadPress = (road: Road) => {
+    navigation.navigate("AssetForm", { assetId: road.id });
   };
 
-  const handleAssetPress = (asset: Asset) => {
-    navigation.navigate("AssetForm", { assetId: asset.id });
-  };
-
-  const handleAddAsset = () => {
+  const handleAddNew = () => {
     navigation.navigate("AssetForm", {});
   };
 
-  const renderAssetItem = ({ item }: { item: Asset }) => (
-    <AssetItem asset={item} onPress={() => handleAssetPress(item)} />
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    // TODO: Implement refresh logic
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  const renderRoadItem = ({ item }: { item: Road }) => (
+    <AssetItem road={item} onPress={() => handleRoadPress(item)} />
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState} testID="empty-state">
-      <Text style={styles.emptyStateTitle}>No Assets Found</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        {searchQuery || filterType || filterCondition
-          ? "Try adjusting your filters"
-          : "Get started by adding your first asset"}
-      </Text>
+  const renderFilterButtons = () => (
+    <View style={styles.filterContainer}>
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={handleAddAsset}
-        testID="add-first-asset-button"
+        style={[styles.filterButton, filterCondition === "" && styles.filterButtonActive]}
+        onPress={() => setFilterCondition("")}
       >
-        <Text style={styles.addButtonText}>Add Asset</Text>
+        <Text
+          style={[styles.filterButtonText, filterCondition === "" && styles.filterButtonTextActive]}
+        >
+          All
+        </Text>
       </TouchableOpacity>
+      {Object.values(AssetCondition).map((condition) => (
+        <TouchableOpacity
+          key={condition}
+          style={[styles.filterButton, filterCondition === condition && styles.filterButtonActive]}
+          onPress={() => setFilterCondition(condition)}
+        >
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterCondition === condition && styles.filterButtonTextActive,
+            ]}
+          >
+            {condition.charAt(0).toUpperCase() + condition.slice(1)}
+          </Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Search and Filter Section */}
-      <View style={styles.searchSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search assets..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          testID="search-input"
-        />
-
-        <View style={styles.filterRow}>
-          {/* Type Filter */}
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterLabel}>Type:</Text>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => {
-                // In a real app, this would show a picker
-                Alert.alert("Filter", "Type filter would open here");
-              }}
-              testID="type-filter-button"
-            >
-              <Text style={styles.filterButtonText}>{filterType || "All"}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Condition Filter */}
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterLabel}>Condition:</Text>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => {
-                // In a real app, this would show a picker
-                Alert.alert("Filter", "Condition filter would open here");
-              }}
-              testID="condition-filter-button"
-            >
-              <Text style={styles.filterButtonText}>{filterCondition || "All"}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.title}>Road Assets</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
+          <Text style={styles.addButtonText}>+ Add Road</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Asset List */}
-      <FlatList
-        data={filteredAssets}
-        renderItem={renderAssetItem}
-        keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        contentContainerStyle={filteredAssets.length === 0 ? styles.emptyContainer : undefined}
-        ListEmptyComponent={renderEmptyState}
-        testID="asset-list"
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search roads..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
 
-      {/* Floating Add Button */}
-      {filteredAssets.length > 0 && (
-        <TouchableOpacity style={styles.fab} onPress={handleAddAsset} testID="add-asset-fab">
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
+      {renderFilterButtons()}
+
+      <FlatList
+        data={filteredRoads}
+        renderItem={renderRoadItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {searchQuery || filterCondition !== ""
+                ? "No roads match your search criteria"
+                : "No roads found. Add your first road asset!"}
+            </Text>
+            {!searchQuery && filterCondition === "" && (
+              <TouchableOpacity style={styles.emptyAddButton} onPress={handleAddNew}>
+                <Text style={styles.emptyAddButtonText}>Add Road</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        }
+      />
     </View>
   );
 };
-
-// WatermelonDB observable HOC
-const enhance = withObservables([], () => ({
-  assets: collections.assets.query().observe(),
-}));
-
-export default enhance(AssetListScreen);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  searchSection: {
-    backgroundColor: "white",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  addButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: "#fff",
+  },
   searchInput: {
-    height: 40,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    paddingHorizontal: 12,
+    padding: 12,
     fontSize: 16,
-    marginBottom: 12,
-  },
-  filterRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
   filterContainer: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  filterLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
   filterButton: {
-    backgroundColor: "#f0f0f0",
-    padding: 8,
-    borderRadius: 6,
-    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+  },
+  filterButtonActive: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
   },
   filterButtonText: {
-    fontSize: 14,
-    color: "#333",
+    fontSize: 12,
+    color: "#666",
+  },
+  filterButtonTextActive: {
+    color: "#fff",
+  },
+  listContainer: {
+    padding: 16,
   },
   assetItem: {
-    backgroundColor: "white",
-    margin: 8,
+    backgroundColor: "#fff",
+    borderRadius: 12,
     padding: 16,
-    borderRadius: 8,
-    elevation: 2,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   assetHeader: {
     flexDirection: "row",
@@ -274,7 +287,7 @@ const styles = StyleSheet.create({
   },
   assetName: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: "#333",
     flex: 1,
   },
@@ -282,93 +295,66 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    minWidth: 60,
+    alignItems: "center",
   },
   conditionText: {
-    color: "white",
+    color: "#fff",
     fontSize: 10,
-    fontWeight: "bold",
-  },
-  assetType: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
+    fontWeight: "600",
   },
   assetLocation: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  roadDetails: {
+    marginBottom: 8,
+  },
+  roadSpec: {
+    fontSize: 13,
+    color: "#555",
+    marginBottom: 2,
   },
   assetNotes: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
-    marginBottom: 8,
     fontStyle: "italic",
+    marginBottom: 8,
   },
   assetFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  assetDate: {
-    fontSize: 12,
+  assetId: {
+    fontSize: 11,
     color: "#999",
   },
-  qrTag: {
-    fontSize: 12,
+  assetDate: {
+    fontSize: 11,
     color: "#999",
-    fontFamily: "monospace",
   },
   emptyContainer: {
-    flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    paddingVertical: 40,
   },
-  emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
+  emptyText: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  addButton: {
+  emptyAddButton: {
     backgroundColor: "#007AFF",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 6,
   },
-  addButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  fabText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "bold",
+  emptyAddButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
+
+export default AssetListScreen;

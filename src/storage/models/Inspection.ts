@@ -1,6 +1,6 @@
 import { Model } from "@nozbe/watermelondb";
 import { text, field, date, relation, readonly } from "@nozbe/watermelondb/decorators";
-import type { Asset } from "./Asset";
+import type { Road } from "./assets/Road";
 
 export class Inspection extends Model {
   static table = "inspections";
@@ -20,7 +20,7 @@ export class Inspection extends Model {
   @readonly @date("updated_at") updatedAt!: Date;
   @field("synced") synced!: boolean;
 
-  @relation("assets", "asset_id") asset!: Asset;
+  @relation("assets", "asset_id") asset!: Road;
 
   // Computed properties
   get isOverdue(): boolean {
