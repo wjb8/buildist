@@ -3,10 +3,11 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { withObservables } from "@nozbe/watermelondb/react";
 import "react-native-get-random-values"; // Required for WatermelonDB
 
 // Import database initialization
-import { initializeDatabase } from "@storage/database";
+import { initializeDatabase, collections } from "@storage/database";
 
 // Import screens
 import AssetListScreen from "@screens/AssetListScreen";
@@ -23,6 +24,11 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Wrapper component that provides roads data
+const AssetListScreenWithData = withObservables([], () => ({
+  roads: collections.roads.query().observe(),
+}))(AssetListScreen);
 
 interface AppState {
   isLoading: boolean;
@@ -110,7 +116,7 @@ export default function App() {
       >
         <Stack.Screen
           name="AssetList"
-          component={AssetListScreen}
+          component={AssetListScreenWithData}
           options={{
             title: "Assets",
             headerLargeTitle: true,

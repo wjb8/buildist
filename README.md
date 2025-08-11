@@ -8,10 +8,27 @@ A React Native mobile application for offline-capable asset management, designed
 
 **Buildist** is an asset management platform that enables communities to track, manage, and maintain their infrastructure assets. The platform focuses on creating a credible, functional proof-of-concept that showcases the core vision.
 
+### Current Status: Phase 1 - Road Asset Management MVP ✅
+
+**Phase 1 Implementation Complete:**
+
+- ✅ **Database Layer**: WatermelonDB with SQLite, schema v2 with road-specific fields
+- ✅ **Asset Types**: Road-focused infrastructure types (roads, bridges, sidewalks, street lights, traffic signals)
+- ✅ **Core Screens**: Asset creation/editing form with road-specific fields, asset list view with filtering
+- ✅ **Data Model**: Comprehensive road asset properties (surface type, traffic volume, dimensions, speed limits)
+- ✅ **Offline Capability**: Full offline operation with local data persistence
+- ✅ **UI/UX**: Clean, functional interface with road-specific information display
+
+**In Progress for Full MVP:**
+
+- 🔄 **Demo Data**: Example road assets for investor demonstration
+- 🔄 **Admin Authentication**: Basic login gate for access control
+- 🔄 **AI Integration**: Natural language prompt parser
+
 ### Key Objectives
 
-- Demonstrate offline-capable asset management
-- Showcase AI-powered natural language input
+- Demonstrate offline-capable road asset management
+- Showcase comprehensive road infrastructure data capture
 - Provide a functional demo for stakeholder presentations
 - Establish the foundation for future development phases
 
@@ -19,9 +36,19 @@ A React Native mobile application for offline-capable asset management, designed
 
 ### Asset Management
 
-- **Single Asset Type**: Road assets (expandable in future phases)
+- **Road-Focused Asset Types**: Primary focus on road infrastructure including:
+  - **Roads**: Main road assets with detailed specifications
+  - **Bridges**: Bridge infrastructure assets
+  - **Sidewalks**: Pedestrian walkway assets
+  - **Street Lights**: Lighting infrastructure
+  - **Traffic Signals**: Traffic control assets
+- **Rich Road Data**: Comprehensive road asset information including:
+  - Surface type (asphalt, concrete, gravel, dirt, paver)
+  - Traffic volume (residential, collector, arterial, highway)
+  - Physical dimensions (length, width, lanes)
+  - Speed limits and traffic regulations
 - **Offline Entry Form**: Add/edit road assets with local data storage
-- **Asset List View**: Simple, filterable list of entered assets
+- **Asset List View**: Simple, filterable list with road-specific information display
 - **Demo Data**: Preloaded example records for demonstration
 
 ### AI Integration
@@ -48,6 +75,10 @@ A React Native mobile application for offline-capable asset management, designed
 ### Data Layer
 
 - **Local Storage**: WatermelonDB with SQLite adapter
+- **Database Schema**: Version 2 with road-specific fields
+  - Asset metadata (name, type, location, condition, notes)
+  - Road-specific properties (surface type, traffic volume, dimensions, lanes, speed limit)
+  - Inspection tracking and maintenance history
 - **Offline Capability**: Full offline operation with local data
 - **Scope**: Local-only operation for Phase 1 demo
 
@@ -89,6 +120,82 @@ cp .env.example .env
 # Add your OpenAI API key
 OPENAI_API_KEY=your_api_key_here
 ```
+
+## 🗄️ Database Schema
+
+### Current Version: v2
+
+The database schema has been updated to support road-focused asset management with the following structure:
+
+#### Assets Table
+
+- **Core Fields**: `id`, `type`, `name`, `location`, `condition`, `notes`, `qr_tag_id`
+- **Road-Specific Fields**:
+  - `surface_type`: Road surface material (asphalt, concrete, gravel, dirt, paver)
+  - `traffic_volume`: Traffic level (low, medium, high, very_high)
+  - `length`: Road length in meters
+  - `width`: Road width in meters
+  - `lanes`: Number of traffic lanes
+  - `speed_limit`: Speed limit in km/h
+- **Metadata**: `created_at`, `updated_at`, `synced`
+
+#### Inspections Table
+
+- **Fields**: `id`, `asset_id`, `inspector`, `description`, `score`, `timestamp`
+- **Maintenance**: `maintenance_needed`, `next_due`
+- **Metadata**: `created_at`, `updated_at`, `synced`
+
+### Schema Migration
+
+When upgrading from v1 to v2, the database will automatically add the new road-specific fields. For development/testing, you can reset the database:
+
+```bash
+# Reset database (development only)
+npm run db:reset
+```
+
+## 🛣️ Asset Types & Usage
+
+### Primary Asset Types (Phase 1 Focus)
+
+#### Road Assets
+
+- **Type**: `AssetType.ROAD`
+- **Purpose**: Main road infrastructure management
+- **Required Fields**: Name, condition
+- **Optional Fields**: Location, notes, surface type, traffic volume, dimensions, lanes, speed limit
+
+#### Supporting Infrastructure
+
+- **Bridges** (`AssetType.BRIDGE`): Bridge assets with road-like properties
+- **Sidewalks** (`AssetType.SIDEWALK`): Pedestrian walkway assets
+- **Street Lights** (`AssetType.STREET_LIGHT`): Lighting infrastructure
+- **Traffic Signals** (`AssetType.TRAFFIC_SIGNAL`): Traffic control assets
+
+### Road Asset Properties
+
+#### Surface Types
+
+- **Asphalt**: Standard paved roads
+- **Concrete**: High-durability paved roads
+- **Gravel**: Unpaved rural roads
+- **Dirt**: Basic unpaved roads
+- **Paver**: Decorative paved surfaces
+
+#### Traffic Volume Levels
+
+- **Low**: Residential streets (local traffic)
+- **Medium**: Collector roads (neighborhood traffic)
+- **High**: Arterial roads (major traffic flow)
+- **Very High**: Highways and major thoroughfares
+
+### Asset Management Workflow
+
+1. **Create Asset**: Select road type and fill in basic information
+2. **Add Details**: Specify surface type, traffic volume, dimensions
+3. **Track Condition**: Monitor asset condition over time
+4. **Schedule Inspections**: Plan regular maintenance checks
+5. **Generate Reports**: Export asset data for analysis
 
 ## 🎨 Design System
 
