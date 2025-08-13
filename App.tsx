@@ -1,26 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Alert } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { withObservables } from "@nozbe/watermelondb/react";
 import "react-native-get-random-values";
-import { initializeDatabase, collections } from "@storage/database";
-import AssetListScreen from "@screens/AssetListScreen";
-import AssetFormScreen from "@screens/AssetFormScreen";
-import { colors, spacing, typography } from "./src/styles";
-import { View, Text } from "./src/components";
-
-export type RootStackParamList = {
-  AssetList: undefined;
-  AssetForm: { assetId?: string };
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-const AssetListScreenWithData = withObservables([], () => ({
-  roads: collections.roads.query().observe(),
-}))(AssetListScreen);
+import { initializeDatabase } from "@storage/database";
+import { colors, spacing } from "./src/styles";
+import { View, Text, MainPage } from "./src/components";
 
 interface AppState {
   isLoading: boolean;
@@ -92,39 +76,7 @@ export default function App() {
     </View>
   );
 
-  const renderMainApp = () => (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="AssetList"
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: colors.primary.main,
-          },
-          headerTintColor: colors.text.inverse,
-          headerTitleStyle: {
-            fontWeight: typography.fontWeight.bold,
-          },
-        }}
-      >
-        <Stack.Screen
-          name="AssetList"
-          component={AssetListScreenWithData}
-          options={{
-            title: "Assets",
-            headerLargeTitle: true,
-          }}
-        />
-        <Stack.Screen
-          name="AssetForm"
-          component={AssetFormScreen}
-          options={({ route }) => ({
-            title: route.params?.assetId ? "Edit Asset" : "New Asset",
-            presentation: "modal",
-          })}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+  const renderMainApp = () => <MainPage />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.primary }}>

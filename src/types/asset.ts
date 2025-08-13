@@ -15,22 +15,6 @@ export enum AssetCondition {
   CRITICAL = "critical",
 }
 
-export enum RoadSurfaceType {
-  ASPHALT = "asphalt",
-  CONCRETE = "concrete",
-  GRAVEL = "gravel",
-  DIRT = "dirt",
-  PAVER = "paver",
-  OTHER = "other",
-}
-
-export enum TrafficVolume {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  VERY_HIGH = "very_high",
-}
-
 export interface AssetData {
   type: AssetType;
   name: string;
@@ -38,14 +22,4 @@ export interface AssetData {
   condition: AssetCondition;
   notes?: string;
   qrTagId?: string;
-  surfaceType?: RoadSurfaceType;
-  trafficVolume?: TrafficVolume;
-  length?: number;
-  width?: number;
-  lanes?: number;
-  speedLimit?: number;
 }
-
-// Utility types for specific operations
-export type CreateAssetData = AssetData;
-export type UpdateAssetData = Partial<AssetData>;
