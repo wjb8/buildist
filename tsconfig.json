@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["src/*"]
     }
