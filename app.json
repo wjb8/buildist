@@ -20,11 +20,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.jamesmeta.buildist"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-build-properties", "@morrowdigital/watermelondb-expo-plugin"]
+    "plugins": ["expo-build-properties"]
   }
 }

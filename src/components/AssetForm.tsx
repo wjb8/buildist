@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { ScrollView, Alert } from "react-native";
 import { AssetType, AssetCondition, RoadSurfaceType, TrafficVolume, type RoadData } from "@/types";
-import { collections } from "@/storage/database";
+import { getRealm } from "@/storage/realm";
+import Realm from "realm";
 import { View, Text, Input, Button, Card } from "@/components";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles, inputStyles } from "@/styles";
 
@@ -79,6 +80,12 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
     return newErrors.length === 0;
   };
 
+  // Helper function for QR tag generation
+  const generateQRTagId = (): string => {
+    const timestamp = Date.now().toString(36);
+    return `ROA-${timestamp}`;
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -104,19 +111,27 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
         speedLimit: formData.speedLimit ? parseInt(formData.speedLimit) : undefined,
       };
 
-      await collections.roads.create((road) => {
-        road.name = assetData.name;
-        road.location = assetData.location;
-        road.condition = assetData.condition;
-        road.notes = assetData.notes;
-        road.qrTagId = assetData.qrTagId || road.generateQRTagId();
-        road.surfaceType = assetData.surfaceType;
-        road.trafficVolume = assetData.trafficVolume;
-        road.length = assetData.length;
-        road.width = assetData.width;
-        road.lanes = assetData.lanes;
-        road.speedLimit = assetData.speedLimit;
-        road.synced = false;
+      const realm = await getRealm();
+
+      // Create the road asset using Realm
+      realm.write(() => {
+        realm.create("Road", {
+          _id: new Realm.BSON.ObjectId(),
+          name: assetData.name,
+          location: assetData.location,
+          condition: assetData.condition,
+          notes: assetData.notes,
+          qrTagId: assetData.qrTagId || generateQRTagId(),
+          surfaceType: assetData.surfaceType,
+          trafficVolume: assetData.trafficVolume,
+          length: assetData.length,
+          width: assetData.width,
+          lanes: assetData.lanes,
+          speedLimit: assetData.speedLimit,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          synced: false,
+        });
       });
 
       Alert.alert("Success", "Road asset created successfully!");

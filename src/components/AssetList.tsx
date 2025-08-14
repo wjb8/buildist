@@ -1,19 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, RefreshControl } from "react-native";
-import { withObservables } from "@nozbe/watermelondb/react";
-import { collections } from "@/storage/database";
+import { useRealm, useQuery } from "@realm/react";
 import { View, Text, Card, Badge, Divider } from "@/components";
 import { colors, spacing, layoutStyles, textStyles } from "@/styles";
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
-import type { Road } from "@/storage/models/assets/Road";
+import { Road } from "@/storage/models/assets/Road";
 
 interface AssetListProps {
-  roads: Road[];
   onRefresh?: () => void;
   refreshing?: boolean;
 }
 
-function AssetListComponent({ roads, onRefresh, refreshing }: AssetListProps) {
+export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
+  const realm = useRealm();
+  const roads = useQuery(Road);
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -52,8 +52,8 @@ function AssetListComponent({ roads, onRefresh, refreshing }: AssetListProps) {
 
   if (roads.length === 0) {
     return (
-      <View center style={[layoutStyles.p4]}>
-        <Text variant="h4" color="neutral" center style={[textStyles.mb2]}>
+      <View style={[layoutStyles.centerContainer]}>
+        <Text variant="h4" color="neutral" center style={[layoutStyles.mb2]}>
           No Road Assets Found
         </Text>
         <Text variant="body" color="neutral" center>
@@ -65,17 +65,17 @@ function AssetListComponent({ roads, onRefresh, refreshing }: AssetListProps) {
 
   return (
     <ScrollView
-      style={[layoutStyles.container]}
+      style={[layoutStyles.flex]}
       refreshControl={<RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />}
     >
       <View style={[layoutStyles.p4]}>
-        <Text variant="h3" style={[textStyles.mb4]}>
+        <Text variant="h3" style={[layoutStyles.mb4]}>
           Current Road Assets ({roads.length})
         </Text>
 
         {roads.map((road, index) => (
-          <Card key={road.id} style={[layoutStyles.mb3]}>
-            <View style={[layoutStyles.row, layoutStyles.mb2]}>
+          <Card key={road._id.toString()} style={[layoutStyles.mb3]}>
+            <View style={[layoutStyles.flexRow, layoutStyles.mb2]}>
               <View style={[layoutStyles.flex1]}>
                 <Text variant="h4" style={[textStyles.mb1]}>
                   {road.name}
@@ -180,7 +180,3 @@ function AssetListComponent({ roads, onRefresh, refreshing }: AssetListProps) {
     </ScrollView>
   );
 }
-
-export default withObservables([], () => ({
-  roads: collections.roads.query().observe(),
-}))(AssetListComponent);
