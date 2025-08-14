@@ -26,24 +26,6 @@ jest.mock("expo-camera", () => ({
   },
 }));
 
-jest.mock("expo-barcode-scanner", () => ({
-  BarCodeScanner: "BarCodeScanner",
-  PermissionStatus: {
-    GRANTED: "granted",
-    DENIED: "denied",
-  },
-}));
-
-// Mock WatermelonDB
-jest.mock("@nozbe/watermelondb/Database", () => ({
-  Database: jest.fn(),
-}));
-
-jest.mock("@nozbe/watermelondb/adapters/sqlite", () => ({
-  default: jest.fn(),
-}));
-
-// Mock OpenAI
 jest.mock("openai", () => ({
   OpenAI: jest.fn().mockImplementation(() => ({
     chat: {
@@ -54,18 +36,6 @@ jest.mock("openai", () => ({
   })),
 }));
 
-// Global test utilities
-global.console = {
-  ...console,
-  // Uncomment to hide console logs during testing
-  // log: jest.fn(),
-  // debug: jest.fn(),
-  // info: jest.fn(),
-  // warn: jest.fn(),
-  // error: jest.fn(),
-};
-
-// Setup fake timers for testing
 beforeEach(() => {
   jest.clearAllMocks();
 });

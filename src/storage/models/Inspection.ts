@@ -1,28 +1,36 @@
-import { Model } from "@nozbe/watermelondb";
-import { text, field, date, relation, readonly } from "@nozbe/watermelondb/decorators";
-import type { Road } from "./assets/Road";
+import Realm from "realm";
 
-export class Inspection extends Model {
-  static table = "inspections";
-  static associations = {
-    assets: { type: "belongs_to" as const, key: "asset_id" },
+export class Inspection extends Realm.Object {
+  static schema = {
+    name: "Inspection",
+    primaryKey: "_id",
+    properties: {
+      _id: "objectId",
+      assetId: "string",
+      inspector: "string",
+      description: "string",
+      score: "int",
+      timestamp: "date",
+      maintenanceNeeded: "bool",
+      nextDue: "date?",
+      createdAt: "date",
+      updatedAt: "date",
+      synced: "bool",
+    },
   };
 
-  @text("asset_id") assetId!: string;
-  @text("inspector") inspector!: string;
-  @text("description") description!: string;
-  @field("score") score!: number;
-  @date("timestamp") timestamp!: Date;
-  @field("maintenance_needed") maintenanceNeeded!: boolean;
-  @date("next_due") nextDue?: Date;
+  _id!: Realm.BSON.ObjectId;
+  assetId!: string;
+  inspector!: string;
+  description!: string;
+  score!: number;
+  timestamp!: Date;
+  maintenanceNeeded!: boolean;
+  nextDue?: Date;
+  createdAt!: Date;
+  updatedAt!: Date;
+  synced!: boolean;
 
-  @readonly @date("created_at") createdAt!: Date;
-  @readonly @date("updated_at") updatedAt!: Date;
-  @field("synced") synced!: boolean;
-
-  @relation("assets", "asset_id") asset!: Road;
-
-  // Computed properties
   get isOverdue(): boolean {
     if (!this.nextDue) return false;
     return new Date() > this.nextDue;
@@ -41,31 +49,5 @@ export class Inspection extends Model {
     const now = new Date();
     const diffTime = this.nextDue.getTime() - now.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  // Helper methods
-  async scheduleNextInspection(daysFromNow: number): Promise<void> {
-    const nextDueDate = new Date();
-    nextDueDate.setDate(nextDueDate.getDate() + daysFromNow);
-
-    await this.update((inspection) => {
-      inspection.nextDue = nextDueDate;
-      inspection.synced = false;
-    });
-  }
-
-  async updateScore(newScore: number, aiGenerated: boolean = false): Promise<void> {
-    await this.update((inspection) => {
-      inspection.score = Math.max(1, Math.min(10, newScore)); // Clamp to 1-10
-      inspection.maintenanceNeeded = newScore < 5; // Auto-flag for maintenance if score is low
-      inspection.synced = false;
-    });
-  }
-
-  async markMaintenanceComplete(): Promise<void> {
-    await this.update((inspection) => {
-      inspection.maintenanceNeeded = false;
-      inspection.synced = false;
-    });
   }
 }

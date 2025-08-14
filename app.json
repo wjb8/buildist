@@ -26,6 +26,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-build-properties", "@morrowdigital/watermelondb-expo-plugin"]
+    "plugins": ["expo-build-properties"]
   }
 }

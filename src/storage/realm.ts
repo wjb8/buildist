@@ -29,7 +29,7 @@ export const getRealm = async (): Promise<Realm> => {
 };
 
 // reset database
-export const resetDatabase = async (): Promise<void> => {
+export const resetRealm = async (): Promise<void> => {
   try {
     const realm = await getRealm();
     realm.write(() => {
