@@ -74,8 +74,8 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
         </Text>
 
         {roads.map((road, index) => (
-          <Card key={road.id} style={[layoutStyles.mb3]}>
-            <View style={[layoutStyles.row, layoutStyles.mb2]}>
+          <Card key={road._id.toString()} style={[layoutStyles.mb3]}>
+            <View style={[layoutStyles.flexRow, layoutStyles.mb2]}>
               <View style={[layoutStyles.flex1]}>
                 <Text variant="h4" style={[textStyles.mb1]}>
                   {road.name}
