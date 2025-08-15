@@ -27,7 +27,7 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
       case AssetCondition.CRITICAL:
         return "error";
       default:
-        return "neutral";
+        return "secondary";
     }
   };
 
@@ -42,7 +42,7 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
       case TrafficVolume.VERY_HIGH:
         return "error";
       default:
-        return "neutral";
+        return "secondary";
     }
   };
 
@@ -52,7 +52,7 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
 
   if (roads.length === 0) {
     return (
-      <View style={[layoutStyles.centerContainer]}>
+      <View center style={[layoutStyles.centerContainer]}>
         <Text variant="h4" color="neutral" center style={[layoutStyles.mb2]}>
           No Road Assets Found
         </Text>
@@ -75,31 +75,31 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
 
         {roads.map((road, index) => (
           <Card key={road._id.toString()} style={[layoutStyles.mb3]}>
-            <View style={[layoutStyles.flexRow, layoutStyles.mb2]}>
-              <View style={[layoutStyles.flex1]}>
-                <Text variant="h4" style={[textStyles.mb1]}>
+            <View row style={[layoutStyles.mb2]}>
+              <View style={[layoutStyles.flex]}>
+                <Text variant="h4" style={[layoutStyles.mb1]}>
                   {road.name}
                 </Text>
                 {road.location && (
-                  <Text variant="body" color="neutral" style={[textStyles.mb1]}>
+                  <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
                     📍 {road.location}
                   </Text>
                 )}
               </View>
-              <View style={[layoutStyles.alignEnd]}>
+              <View style={{ alignItems: "flex-end" }}>
                 <Badge variant={getConditionColor(road.condition)}>{road.condition}</Badge>
               </View>
             </View>
 
-            <View style={[layoutStyles.row, layoutStyles.mb2]}>
-              <View style={[layoutStyles.flex1]}>
-                <Text variant="label" color="neutral">
+            <View row style={[layoutStyles.mb2]}>
+              <View style={[layoutStyles.flex]}>
+                <Text variant="bodySmall" color="neutral">
                   Surface Type
                 </Text>
                 <Text variant="body">{road.surfaceType}</Text>
               </View>
-              <View style={[layoutStyles.flex1]}>
-                <Text variant="label" color="neutral">
+              <View style={[layoutStyles.flex]}>
+                <Text variant="bodySmall" color="neutral">
                   Traffic Volume
                 </Text>
                 <Badge variant={getTrafficVolumeColor(road.trafficVolume)} size="small">
@@ -109,34 +109,34 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
             </View>
 
             {(road.length || road.width || road.lanes || road.speedLimit) && (
-              <View style={[layoutStyles.row, layoutStyles.mb2]}>
+              <View row style={[layoutStyles.mb2]}>
                 {road.length && (
-                  <View style={[layoutStyles.flex1]}>
-                    <Text variant="label" color="neutral">
+                  <View style={[layoutStyles.flex]}>
+                    <Text variant="bodySmall" color="neutral">
                       Length
                     </Text>
                     <Text variant="body">{road.length}m</Text>
                   </View>
                 )}
                 {road.width && (
-                  <View style={[layoutStyles.flex1]}>
-                    <Text variant="label" color="neutral">
+                  <View style={[layoutStyles.flex]}>
+                    <Text variant="bodySmall" color="neutral">
                       Width
                     </Text>
                     <Text variant="body">{road.width}m</Text>
                   </View>
                 )}
                 {road.lanes && (
-                  <View style={[layoutStyles.flex1]}>
-                    <Text variant="label" color="neutral">
+                  <View style={[layoutStyles.flex]}>
+                    <Text variant="bodySmall" color="neutral">
                       Lanes
                     </Text>
                     <Text variant="body">{road.lanes}</Text>
                   </View>
                 )}
                 {road.speedLimit && (
-                  <View style={[layoutStyles.flex1]}>
-                    <Text variant="label" color="neutral">
+                  <View style={[layoutStyles.flex]}>
+                    <Text variant="bodySmall" color="neutral">
                       Speed Limit
                     </Text>
                     <Text variant="body">{road.speedLimit} km/h</Text>
@@ -147,7 +147,7 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
 
             {road.notes && (
               <View style={[layoutStyles.mb2]}>
-                <Text variant="label" color="neutral">
+                <Text variant="bodySmall" color="neutral">
                   Notes
                 </Text>
                 <Text variant="body">{road.notes}</Text>
@@ -156,15 +156,15 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
 
             <Divider style={[layoutStyles.my2]} />
 
-            <View style={[layoutStyles.row, layoutStyles.spaceBetween]}>
+            <View spaceBetween style={[layoutStyles.mb2]}>
               <View>
-                <Text variant="label" color="neutral">
+                <Text variant="bodySmall" color="neutral">
                   Created
                 </Text>
                 <Text variant="bodySmall">{formatDate(road.createdAt)}</Text>
               </View>
-              <View style={[layoutStyles.alignEnd]}>
-                <Text variant="label" color="neutral">
+              <View style={{ alignItems: "flex-end" }}>
+                <Text variant="bodySmall" color="neutral">
                   QR Tag
                 </Text>
                 <Text variant="bodySmall" color="neutral">

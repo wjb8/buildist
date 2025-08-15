@@ -18,22 +18,22 @@ export default function MainPage() {
 
   return (
     <ScrollView
-      style={[layoutStyles.container]}
+      style={[layoutStyles.flex]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <View style={[layoutStyles.p4]}>
         <View style={[layoutStyles.mb4]}>
-          <Text variant="h2" style={[textStyles.mb2]}>
+          <Text variant="h2" style={[layoutStyles.mb2]}>
             Buildist Asset Manager
           </Text>
-          <Text variant="body" color="neutral" style={[textStyles.mb4]}>
+          <Text variant="body" color="neutral" style={[layoutStyles.mb4]}>
             Manage your road infrastructure assets offline
           </Text>
 
           <Button
             variant={showForm ? "secondary" : "primary"}
             onPress={() => setShowForm(!showForm)}
-            style={[buttonStyles.mb4]}
+            style={[layoutStyles.mb4]}
           >
             {showForm ? "Hide Form" : "Add New Road Asset"}
           </Button>
