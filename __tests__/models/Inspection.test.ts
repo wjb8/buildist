@@ -144,7 +144,7 @@ describe("Inspection Model", () => {
       });
 
       expect(mockInspection.update).toHaveBeenCalled();
-      // Note: In a real WatermelonDB model, updatedAt would be automatically updated
+      // Note: In a real Realm model, updatedAt would be automatically updated
     });
   });
 

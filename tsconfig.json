@@ -11,8 +11,10 @@
     "baseUrl": ".",
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@storage/*": ["src/storage/*"]
     }
   },
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "extends": "expo/tsconfig.base"
 }

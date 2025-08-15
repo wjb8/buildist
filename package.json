@@ -11,7 +11,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
-    "db:reset": "node -e \"require('./src/storage/database').resetDatabase().then(() => console.log('Database reset complete')).catch(console.error)\""
+    "db:reset": "node -e \"require('./src/storage/realm').resetRealm().then(() => console.log('Database reset complete')).catch(console.error)\""
   },
   "dependencies": {
     "@babel/plugin-proposal-decorators": "^7.28.0",
@@ -23,7 +23,7 @@
     "expo-dev-client": "~5.2.4",
     "expo-status-bar": "~2.2.3",
     "openai": "^5.12.0",
-    "react": "19.1.1",
+    "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-get-random-values": "^1.11.0",
     "react-native-safe-area-context": "5.4.0",

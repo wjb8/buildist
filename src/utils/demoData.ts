@@ -1,9 +1,11 @@
-import { collections } from "@/storage/database";
+import Realm from "realm";
+import { getRealm } from "@/storage/realm";
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
 
 export const seedDemoData = async () => {
   try {
-    const existingRoads = await collections.roads.query().fetch();
+    const realm = await getRealm();
+    const existingRoads = realm.objects("Road");
 
     if (existingRoads.length > 0) {
       console.log("Demo data already exists, skipping seeding");
@@ -49,22 +51,19 @@ export const seedDemoData = async () => {
       },
     ];
 
-    for (const roadData of demoRoads) {
-      await collections.roads.create((road) => {
-        road.name = roadData.name;
-        road.location = roadData.location;
-        road.condition = roadData.condition;
-        road.notes = roadData.notes;
-        road.qrTagId = road.generateQRTagId();
-        road.surfaceType = roadData.surfaceType;
-        road.trafficVolume = roadData.trafficVolume;
-        road.length = roadData.length;
-        road.width = roadData.width;
-        road.lanes = roadData.lanes;
-        road.speedLimit = roadData.speedLimit;
-        road.synced = false;
-      });
-    }
+    realm.write(() => {
+      for (const roadData of demoRoads) {
+        const qrTagId = generateQRTagId();
+        realm.create("Road", {
+          _id: new Realm.BSON.ObjectId(),
+          ...roadData,
+          qrTagId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          synced: false,
+        });
+      }
+    });
 
     console.log(`Successfully seeded ${demoRoads.length} demo road assets`);
   } catch (error) {
@@ -74,9 +73,17 @@ export const seedDemoData = async () => {
 
 export const clearDemoData = async () => {
   try {
-    await collections.roads.query().destroyAllPermanently();
+    const realm = await getRealm();
+    realm.write(() => {
+      realm.deleteAll();
+    });
     console.log("Demo data cleared successfully");
   } catch (error) {
     console.error("Failed to clear demo data:", error);
   }
+};
+
+const generateQRTagId = (): string => {
+  const timestamp = Date.now().toString(36);
+  return `ROA-${timestamp}`;
 };

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Road, AssetFactory } from "@storage/models";
-import { collections, database } from "@storage/database";
+import { getRealm } from "@storage/realm";
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -85,7 +85,14 @@ const AssetFormScreen = () => {
   const loadRoad = async () => {
     try {
       setLoading(true);
-      const foundRoad = await collections.roads.find(assetId!);
+      const realm = await getRealm();
+      const foundRoad = realm.objectForPrimaryKey("Road", assetId!);
+
+      if (!foundRoad) {
+        Alert.alert("Error", "Road not found");
+        navigation.goBack();
+        return;
+      }
 
       // Use AssetFactory to create the road
       const typedRoad = AssetFactory.createRoad(foundRoad);
@@ -180,10 +187,11 @@ const AssetFormScreen = () => {
 
     try {
       setSaving(true);
+      const realm = await getRealm();
 
       if (isEditMode && road) {
         // Update existing road
-        await road.update((road) => {
+        realm.write(() => {
           road.name = formData.name.trim();
           road.location = formData.location.trim() || undefined;
           road.condition = formData.condition;
@@ -196,26 +204,27 @@ const AssetFormScreen = () => {
           road.width = formData.width ? parseFloat(formData.width) : undefined;
           road.lanes = formData.lanes ? parseInt(formData.lanes) : undefined;
           road.speedLimit = formData.speedLimit ? parseFloat(formData.speedLimit) : undefined;
+          road.updatedAt = new Date();
         });
 
         Alert.alert("Success", "Road updated successfully", [
           { text: "OK", onPress: () => navigation.goBack() },
         ]);
       } else {
-        // Create new road
-        await collections.roads.create((road) => {
-          road.name = formData.name.trim();
-          road.location = formData.location.trim() || undefined;
-          road.condition = formData.condition;
-          road.notes = formData.notes.trim() || undefined;
-          road.qrTagId = formData.qrTagId.trim() || undefined;
+        // Create new road using AssetFactory
+        await AssetFactory.createNewRoad({
+          name: formData.name.trim(),
+          location: formData.location.trim() || undefined,
+          condition: formData.condition,
+          notes: formData.notes.trim() || undefined,
+          qrTagId: formData.qrTagId.trim() || undefined,
           // Road-specific fields
-          road.surfaceType = formData.surfaceType;
-          road.trafficVolume = formData.trafficVolume;
-          road.length = formData.length ? parseFloat(formData.length) : undefined;
-          road.width = formData.width ? parseFloat(formData.width) : undefined;
-          road.lanes = formData.lanes ? parseInt(formData.lanes) : undefined;
-          road.speedLimit = formData.speedLimit ? parseFloat(formData.speedLimit) : undefined;
+          surfaceType: formData.surfaceType,
+          trafficVolume: formData.trafficVolume,
+          length: formData.length ? parseFloat(formData.length) : undefined,
+          width: formData.width ? parseFloat(formData.width) : undefined,
+          lanes: formData.lanes ? parseInt(formData.lanes) : undefined,
+          speedLimit: formData.speedLimit ? parseFloat(formData.speedLimit) : undefined,
         });
 
         Alert.alert("Success", "Road created successfully", [

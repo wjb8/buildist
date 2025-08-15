@@ -1,5 +1,6 @@
+import Realm from "realm";
 import { Road } from "./assets";
-import { collections } from "../database";
+import { getRealm } from "../realm";
 
 export class AssetFactory {
   /**
@@ -12,15 +13,25 @@ export class AssetFactory {
   }
 
   /**
-   * Creates a new road through the collection
+   * Creates a new road through Realm
    * @param roadData The road data
    * @returns A promise that resolves to the created road
    */
   static async createNewRoad(roadData: any): Promise<Road> {
-    return await collections.roads.create((road) => {
-      // Set all the properties on the road
-      Object.assign(road, roadData);
+    const realm = await getRealm();
+    let road: Road;
+
+    realm.write(() => {
+      road = realm.create("Road", {
+        _id: new Realm.BSON.ObjectId(),
+        ...roadData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        synced: false,
+      });
     });
+
+    return road!;
   }
 
   /**
@@ -28,6 +39,6 @@ export class AssetFactory {
    * @returns The collection name
    */
   static getCollectionName(): string {
-    return "roads";
+    return "Road";
   }
 }

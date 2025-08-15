@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { ScrollView, RefreshControl } from "react-native";
-import { View, Text, Button, AssetForm, AssetList } from "@/components";
+import { View } from "./View";
+import { Text } from "./Text";
+import { Button } from "./Button";
+import AssetForm from "./AssetForm";
+import AssetList from "./AssetList";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 
 export default function MainPage() {
