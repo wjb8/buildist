@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Alert } from "react-native";
 import "react-native-get-random-values";
-import { initializeDatabase } from "@storage/database";
+import { RealmProvider } from "@realm/react";
+import { initRealm, schema, schemaVersion } from "@storage/realm";
 import { colors, spacing } from "./src/styles";
 import { View, Text, MainPage } from "./src/components";
 
@@ -27,8 +28,8 @@ export default function App() {
     try {
       setAppState({ isLoading: true, isReady: false, error: null });
 
-      // Initialize the database
-      await initializeDatabase();
+      // Initialize the Realm database
+      await initRealm();
 
       // Add any other initialization logic here
       // e.g., authentication, app state restoration, etc.
@@ -76,7 +77,11 @@ export default function App() {
     </View>
   );
 
-  const renderMainApp = () => <MainPage />;
+  const renderMainApp = () => (
+    <RealmProvider schema={schema} schemaVersion={schemaVersion}>
+      <MainPage />
+    </RealmProvider>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.primary }}>

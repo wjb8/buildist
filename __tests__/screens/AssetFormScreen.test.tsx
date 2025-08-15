@@ -4,29 +4,25 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import AssetFormScreen from "@/screens/AssetFormScreen";
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
-import { collections } from "@/storage/database";
 import { createMockRoad } from "../utils/mockDatabase";
 
-// Mock the entire storage modules
-const mockFind = jest.fn();
-const mockCreate = jest.fn();
+// Mock the Realm storage module
+const mockGetRealm = jest.fn();
+const mockRealm = {
+  objectForPrimaryKey: jest.fn(),
+  write: jest.fn((callback) => callback()),
+  create: jest.fn(),
+};
 
-jest.mock("@storage/database", () => ({
-  collections: {
-    roads: {
-      find: mockFind,
-      create: mockCreate,
-    },
-  },
-  database: {
-    write: jest.fn((callback) => callback()),
-  },
+jest.mock("@storage/realm", () => ({
+  getRealm: mockGetRealm,
 }));
 
 jest.mock("@storage/models", () => ({
   Road: jest.requireActual("@storage/models").Road,
   AssetFactory: {
     createRoad: jest.fn((road) => road),
+    createNewRoad: jest.fn(),
   },
 }));
 
@@ -83,7 +79,8 @@ describe("AssetFormScreen", () => {
       });
 
       mockRouteParams = { assetId: "road-1" };
-      mockFind.mockResolvedValue(mockRoad);
+      mockGetRealm.mockResolvedValue(mockRealm);
+      mockRealm.objectForPrimaryKey.mockReturnValue(mockRoad);
 
       const { getByText } = render(
         <NavigationContainer>

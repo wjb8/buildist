@@ -9,7 +9,7 @@ Buildist is an **Asset Management Tool** - a React Native app with a comprehensi
 - **Phase**: Barebones Demo (Proof of Concept)
 - **Objective**: Demonstrate core vision to funders, pilot partners, and early adopters
 - **Timeline**: 4-week development cycle
-- **Tech Stack**: Expo + React Native, WatermelonDB with SQLite, OpenAI API integration
+- **Tech Stack**: Expo + React Native, Realm with SQLite, OpenAI API integration
 
 **Core Features to Implement:**
 
@@ -123,7 +123,7 @@ Remember: The goal is to maintain a consistent, maintainable design system that 
 ### Asset Management Features
 
 - **Focus on Road assets** for Phase 1 (single asset type)
-- **Implement offline-first architecture** using WatermelonDB with SQLite
+- **Implement offline-first architecture** using Realm with SQLite
 - **Create AI prompt parser** for natural language asset entry
 - **Build simple admin authentication** (hardcoded or basic login gate)
 - **Include demo data seeding** with 1-2 example road records
@@ -131,7 +131,7 @@ Remember: The goal is to maintain a consistent, maintainable design system that 
 ### Technical Architecture
 
 - **Use Expo + React Native** for mobile-first development
-- **Implement WatermelonDB** for local data storage and offline capability
+- **Implement Realm** for local data storage and offline capability
 - **Focus on local data storage** (no backend integration in Phase 1)
 - **Integrate OpenAI API** for prompt-to-field logic
 - **Keep UI minimal** - wireframe-level design, not visual polish

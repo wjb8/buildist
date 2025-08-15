@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
 import { ScrollView, RefreshControl } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
-import { View, Text, Card, Badge, Divider } from "@/components";
-import { colors, spacing, layoutStyles, textStyles } from "@/styles";
-import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
+import { View } from "./View";
+import { Text } from "./Text";
+import { Card } from "./Card";
+import { Badge } from "./Badge";
+import { Divider } from "./Divider";
+import { layoutStyles } from "@/styles";
+import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
 
 interface AssetListProps {

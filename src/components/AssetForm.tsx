@@ -3,7 +3,11 @@ import { ScrollView, Alert } from "react-native";
 import { AssetType, AssetCondition, RoadSurfaceType, TrafficVolume, type RoadData } from "@/types";
 import { getRealm } from "@/storage/realm";
 import Realm from "realm";
-import { View, Text, Input, Button, Card } from "@/components";
+import { View } from "./View";
+import { Text } from "./Text";
+import { Input } from "./Input";
+import { Button } from "./Button";
+import { Card } from "./Card";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles, inputStyles } from "@/styles";
 
 interface AssetFormProps {

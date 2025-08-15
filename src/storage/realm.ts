@@ -11,6 +11,10 @@ const realmConfig: Realm.Configuration = {
   },
 };
 
+// Export schema for RealmProvider
+export const schema = [Road, Inspection];
+export const schemaVersion = 1;
+
 // init and get realm instance
 export const initRealm = async (): Promise<Realm> => {
   try {

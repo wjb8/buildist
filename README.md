@@ -12,7 +12,7 @@ A React Native mobile application for offline-capable asset management, designed
 
 **Phase 1 Implementation Complete:**
 
-- ✅ **Database Layer**: WatermelonDB with SQLite, schema v2 with road-specific fields
+- ✅ **Database Layer**: Realm with SQLite, schema v2 with road-specific fields
 - ✅ **Asset Types**: Road-focused infrastructure types (roads, bridges, sidewalks, street lights, traffic signals)
 - ✅ **Core Screens**: Asset creation/editing form with road-specific fields, asset list view with filtering
 - ✅ **Data Model**: Comprehensive road asset properties (surface type, traffic volume, dimensions, speed limits)
@@ -70,11 +70,11 @@ A React Native mobile application for offline-capable asset management, designed
 - **Framework**: Expo + React Native
 - **Language**: TypeScript
 - **Styling**: Custom design system with styled-components
-- **State Management**: Local state + WatermelonDB for persistence
+- **State Management**: Local state + Realm for persistence
 
 ### Data Layer
 
-- **Local Storage**: WatermelonDB with SQLite adapter
+- **Local Storage**: Realm with SQLite adapter
 - **Database Schema**: Version 2 with road-specific fields
   - Asset metadata (name, type, location, condition, notes)
   - Road-specific properties (surface type, traffic volume, dimensions, lanes, speed limit)
