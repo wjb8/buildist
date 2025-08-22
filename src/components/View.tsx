@@ -1,10 +1,10 @@
-import React from "react";
 import { View as RNView, ViewStyle } from "react-native";
+import type { ReactNode } from "react";
 import { layoutStyles } from "../styles";
 
 // View component with common layout utilities
 interface ViewProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   style?: ViewStyle | ViewStyle[];
   center?: boolean;
   row?: boolean;

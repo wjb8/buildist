@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Alert } from "react-native";
 import "react-native-get-random-values";
 import { RealmProvider } from "@realm/react";
 import { initRealm, schema, schemaVersion } from "@storage/realm";
 import { colors, spacing } from "./src/styles";
-import { View, Text, MainPage } from "./src/components";
+import { View, Text, MainPage, LoginScreen } from "./src/components";
 
 interface AppState {
   isLoading: boolean;
   isReady: boolean;
+  isAuthenticated: boolean;
   error: string | null;
 }
 
@@ -17,6 +18,7 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>({
     isLoading: true,
     isReady: false,
+    isAuthenticated: false,
     error: null,
   });
 
@@ -26,7 +28,7 @@ export default function App() {
 
   const initializeApp = async () => {
     try {
-      setAppState({ isLoading: true, isReady: false, error: null });
+      setAppState({ isLoading: true, isReady: false, isAuthenticated: false, error: null });
 
       // Initialize the Realm database
       await initRealm();
@@ -34,12 +36,13 @@ export default function App() {
       // Add any other initialization logic here
       // e.g., authentication, app state restoration, etc.
 
-      setAppState({ isLoading: false, isReady: true, error: null });
+      setAppState({ isLoading: false, isReady: true, isAuthenticated: false, error: null });
     } catch (error) {
       console.error("Failed to initialize app:", error);
       setAppState({
         isLoading: false,
         isReady: false,
+        isAuthenticated: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
       });
 
@@ -49,6 +52,14 @@ export default function App() {
         [{ text: "OK" }]
       );
     }
+  };
+
+  const handleLoginSuccess = () => {
+    setAppState((prev) => ({ ...prev, isAuthenticated: true }));
+  };
+
+  const handleLogout = () => {
+    setAppState((prev) => ({ ...prev, isAuthenticated: false }));
   };
 
   const renderLoadingScreen = () => (
@@ -79,7 +90,7 @@ export default function App() {
 
   const renderMainApp = () => (
     <RealmProvider schema={schema} schemaVersion={schemaVersion}>
-      <MainPage />
+      <MainPage onLogout={handleLogout} />
     </RealmProvider>
   );
 
@@ -88,7 +99,10 @@ export default function App() {
       <StatusBar style="light" />
       {appState.isLoading && renderLoadingScreen()}
       {appState.error && renderErrorScreen()}
-      {appState.isReady && renderMainApp()}
+      {appState.isReady && !appState.isAuthenticated && (
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      )}
+      {appState.isReady && appState.isAuthenticated && renderMainApp()}
     </View>
   );
 }

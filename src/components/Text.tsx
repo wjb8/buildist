@@ -1,10 +1,10 @@
-import React from "react";
 import { Text as RNText, TextStyle } from "react-native";
+import type { ReactNode } from "react";
 import { colors, typography, textStyles } from "../styles";
 
 // Text component with typography variants
 interface TextProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   style?: TextStyle | TextStyle[];
   variant?: "h1" | "h2" | "h3" | "h4" | "bodyLarge" | "body" | "bodySmall" | "caption";
   color?: keyof typeof colors.text | string;
