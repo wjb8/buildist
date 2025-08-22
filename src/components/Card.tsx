@@ -1,10 +1,10 @@
-import React from "react";
 import { View, ViewStyle } from "react-native";
+import type { ReactNode } from "react";
 import { colors, spacing, borderRadius, layoutStyles } from "../styles";
 
 // Card component
 interface CardProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   style?: ViewStyle | ViewStyle[];
   padding?: "small" | "medium" | "large";
   shadow?: "none" | "small" | "medium" | "large";

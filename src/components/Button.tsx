@@ -1,11 +1,11 @@
-import React from "react";
 import { TouchableOpacity, TouchableOpacityProps } from "react-native";
+import type { ReactNode } from "react";
 import { buttonStyles, textStyles } from "../styles";
 import { Text } from "./Text";
 
 // Button component
 interface ButtonProps extends TouchableOpacityProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   variant?: "primary" | "secondary" | "text" | "danger";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
