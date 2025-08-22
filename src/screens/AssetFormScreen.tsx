@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   selectorButtonText: {
     fontSize: 14,
-    color: "#333",
+    color: "#007AFF",
     fontWeight: "500",
   },
   selectedButtonText: {
