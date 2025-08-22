@@ -11,3 +11,4 @@ export { Badge } from "./Badge";
 export { default as AssetForm } from "./AssetForm";
 export { default as AssetList } from "./AssetList";
 export { default as MainPage } from "./MainPage";
+export { default as LoginScreen } from "./LoginScreen";

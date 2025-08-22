@@ -7,7 +7,11 @@ import AssetForm from "./AssetForm";
 import AssetList from "./AssetList";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 
-export default function MainPage() {
+interface MainPageProps {
+  onLogout: () => void;
+}
+
+export default function MainPage({ onLogout }: MainPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -27,9 +31,17 @@ export default function MainPage() {
     >
       <View style={[layoutStyles.p4]}>
         <View style={[layoutStyles.mb4]}>
-          <Text variant="h2" style={[layoutStyles.mb2]}>
-            Buildist Asset Manager
-          </Text>
+          <View
+            style={[
+              { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+              layoutStyles.mb2,
+            ]}
+          >
+            <Text variant="h2">Buildist Asset Manager</Text>
+            <Button variant="primary" onPress={onLogout} style={{ paddingHorizontal: spacing.sm }}>
+              Logout
+            </Button>
+          </View>
           <Text variant="body" color="neutral" style={[layoutStyles.mb4]}>
             Manage your road infrastructure assets offline
           </Text>
