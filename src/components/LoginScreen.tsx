@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Alert } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";

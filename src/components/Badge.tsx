@@ -1,11 +1,11 @@
-import React from "react";
 import { View, ViewStyle } from "react-native";
+import type { ReactNode } from "react";
 import { colors, spacing, borderRadius } from "../styles";
 import { Text } from "./Text";
 
 // Badge component
 interface BadgeProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   variant?: "primary" | "secondary" | "success" | "warning" | "error";
   size?: "small" | "medium" | "large";
   style?: ViewStyle | ViewStyle[];

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ScrollView, RefreshControl } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
