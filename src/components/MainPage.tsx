@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { ScrollView, RefreshControl } from "react-native";
+import { ScrollView, RefreshControl, Alert } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
 import AssetForm from "./AssetForm";
 import AssetList from "./AssetList";
+import QRScanner from "./QRScanner";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
+import { Road } from "@/storage/models/assets/Road";
+import { QRService } from "@/services/QRService";
 
 interface MainPageProps {
   onLogout: () => void;
@@ -13,10 +16,47 @@ interface MainPageProps {
 
 export default function MainPage({ onLogout }: MainPageProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleAssetCreated = () => {
     setShowForm(false);
+  };
+
+  const handleQRCodeScanned = async (qrTagId: string) => {
+    console.log("Processing scanned QR code:", qrTagId);
+
+    const result = await QRService.scanQRCode(qrTagId);
+    setShowQRScanner(false);
+
+    if (result.success && result.asset) {
+      Alert.alert(
+        "Asset Found!",
+        `Found asset: ${result.asset.name}\nLocation: ${
+          result.asset.location || "Not specified"
+        }\nCondition: ${result.asset.condition}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // TODO: Navigate to asset detail view or highlight in list
+              console.log("Asset found via QR scan:", result.asset!.name);
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert("Asset Not Found", result.message, [
+        {
+          text: "Try Again",
+          onPress: () => setShowQRScanner(true),
+        },
+        {
+          text: "Cancel",
+          onPress: () => setShowQRScanner(false),
+        },
+      ]);
+    }
   };
 
   const handleRefresh = async () => {
@@ -46,13 +86,23 @@ export default function MainPage({ onLogout }: MainPageProps) {
             Manage your road infrastructure assets offline
           </Text>
 
-          <Button
-            variant={showForm ? "secondary" : "primary"}
-            onPress={() => setShowForm(!showForm)}
-            style={[layoutStyles.mb4]}
-          >
-            {showForm ? "Hide Form" : "Add New Road Asset"}
-          </Button>
+          <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
+            <Button
+              variant={showForm ? "secondary" : "primary"}
+              onPress={() => setShowForm(!showForm)}
+              style={[layoutStyles.flex, layoutStyles.mr2]}
+            >
+              {showForm ? "Hide Form" : "Add Asset"}
+            </Button>
+
+            <Button
+              variant="primary"
+              onPress={() => setShowQRScanner(true)}
+              style={[layoutStyles.flex, layoutStyles.ml2]}
+            >
+              Scan QR Code
+            </Button>
+          </View>
         </View>
 
         {showForm && (
@@ -63,6 +113,10 @@ export default function MainPage({ onLogout }: MainPageProps) {
 
         <AssetList onRefresh={handleRefresh} refreshing={refreshing} />
       </View>
+
+      {showQRScanner && (
+        <QRScanner onQRCodeScanned={handleQRCodeScanned} onClose={() => setShowQRScanner(false)} />
+      )}
     </ScrollView>
   );
 }

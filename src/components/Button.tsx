@@ -1,6 +1,6 @@
 import { TouchableOpacity, TouchableOpacityProps } from "react-native";
 import type { ReactNode } from "react";
-import { buttonStyles, textStyles } from "../styles";
+import { buttonStyles, textStyles, colors } from "../styles";
 import { Text } from "./Text";
 
 // Button component
@@ -36,14 +36,24 @@ export const Button = ({
   };
 
   const getTextStyle = () => {
+    let textStyle;
     switch (size) {
       case "small":
-        return textStyles.buttonSmall;
+        textStyle = textStyles.buttonSmall;
+        break;
       case "large":
-        return textStyles.buttonLarge;
+        textStyle = textStyles.buttonLarge;
+        break;
       default:
-        return textStyles.button;
+        textStyle = textStyles.button;
     }
+
+    // For secondary buttons, override the text color to be visible on white background
+    if (variant === "secondary") {
+      return { ...textStyle, color: colors.primary.main };
+    }
+
+    return textStyle;
   };
 
   return (

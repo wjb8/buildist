@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { ScrollView, RefreshControl } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { View } from "./View";
 import { Text } from "./Text";
+import { Button } from "./Button";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Divider } from "./Divider";
+import QRCodeDisplay from "./QRCodeDisplay";
 import { layoutStyles } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
@@ -17,6 +20,7 @@ interface AssetListProps {
 export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
   const realm = useRealm();
   const roads = useQuery(Road);
+  const [showQRCodes, setShowQRCodes] = useState(false);
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -72,9 +76,16 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
       refreshControl={<RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />}
     >
       <View style={[layoutStyles.p4]}>
-        <Text variant="h3" style={[layoutStyles.mb4]}>
-          Current Road Assets ({roads.length})
-        </Text>
+        <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
+          <Text variant="h3">Current Road Assets ({roads.length})</Text>
+          <Button
+            variant="secondary"
+            onPress={() => setShowQRCodes(!showQRCodes)}
+            style={{ paddingHorizontal: 12 }}
+          >
+            {showQRCodes ? "Hide QR" : "Show QR"}
+          </Button>
+        </View>
 
         {roads.map((road, index) => (
           <Card key={road._id.toString()} style={[layoutStyles.mb3]}>
@@ -154,6 +165,13 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
                   Notes
                 </Text>
                 <Text variant="body">{road.notes}</Text>
+              </View>
+            )}
+
+            {showQRCodes && road.qrTagId && (
+              <View style={[layoutStyles.mb3]}>
+                <Divider style={[layoutStyles.mb2]} />
+                <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
               </View>
             )}
 

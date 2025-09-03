@@ -5,12 +5,16 @@ import { colors, typography, spacing, borderRadius, shadows } from "./theme";
 export const layoutStyles = StyleSheet.create({
   // Flexbox utilities
   flex: { flex: 1 },
+  flex1: { flex: 1 },
   flexRow: { flexDirection: "row" },
+  row: { flexDirection: "row" },
   flexColumn: { flexDirection: "column" },
   flexCenter: { justifyContent: "center", alignItems: "center" },
+  center: { justifyContent: "center", alignItems: "center" },
   flexCenterVertical: { justifyContent: "center" },
   flexCenterHorizontal: { alignItems: "center" },
   flexSpaceBetween: { justifyContent: "space-between" },
+  spaceBetween: { justifyContent: "space-between" },
   flexSpaceAround: { justifyContent: "space-around" },
   flexWrap: { flexWrap: "wrap" },
 

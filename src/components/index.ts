@@ -12,3 +12,5 @@ export { default as AssetForm } from "./AssetForm";
 export { default as AssetList } from "./AssetList";
 export { default as MainPage } from "./MainPage";
 export { default as LoginScreen } from "./LoginScreen";
+export { default as QRScanner } from "./QRScanner";
+export { default as QRCodeDisplay } from "./QRCodeDisplay";
