@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ScrollView, RefreshControl, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  ScrollView,
+  RefreshControl,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
+} from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -30,21 +37,11 @@ export default function MainPage({ onLogout }: MainPageProps) {
     setShowQRScanner(false);
 
     if (result.success && result.asset) {
-      Alert.alert(
-        "Asset Found!",
-        `Found asset: ${result.asset.name}\nLocation: ${
-          result.asset.location || "Not specified"
-        }\nCondition: ${result.asset.condition}`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // TODO: Navigate to asset detail view or highlight in list
-              console.log("Asset found via QR scan:", result.asset!.name);
-            },
-          },
-        ]
-      );
+      // Collapse form if open and highlight the asset in list
+      setShowForm(false);
+      Alert.alert("Asset Found", `Opening ${result.asset.name}`);
+      // Pass focus via state flag by updating the refresh key
+      setFocusQrTag(result.asset.qrTagId || qrTagId);
     } else {
       Alert.alert("Asset Not Found", result.message, [
         {
@@ -63,6 +60,8 @@ export default function MainPage({ onLogout }: MainPageProps) {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
+
+  const [focusQrTag, setFocusQrTag] = useState<string | undefined>(undefined);
 
   return (
     <KeyboardAvoidingView
@@ -121,15 +120,20 @@ export default function MainPage({ onLogout }: MainPageProps) {
             </View>
           )}
 
-          <AssetList onRefresh={handleRefresh} refreshing={refreshing} />
+          <AssetList onRefresh={handleRefresh} refreshing={refreshing} focusQrTagId={focusQrTag} />
         </View>
 
-        {showQRScanner && (
+        <Modal
+          visible={showQRScanner}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowQRScanner(false)}
+        >
           <QRScanner
             onQRCodeScanned={handleQRCodeScanned}
             onClose={() => setShowQRScanner(false)}
           />
-        )}
+        </Modal>
       </ScrollView>
     </KeyboardAvoidingView>
   );

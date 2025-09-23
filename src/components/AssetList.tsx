@@ -17,13 +17,15 @@ import { Inspection } from "@/storage/models/Inspection";
 interface AssetListProps {
   onRefresh?: () => void;
   refreshing?: boolean;
+  focusQrTagId?: string;
 }
 
-export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
+export default function AssetList({ onRefresh, refreshing, focusQrTagId }: AssetListProps) {
   const realm = useRealm();
   const roads = useQuery(Road);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState(false);
+  const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -60,6 +62,17 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
     return date.toLocaleDateString();
   };
 
+  // When focusQrTagId is provided, expand and highlight the matching asset
+  if (focusQrTagId && !expandedAssetId) {
+    const match = roads.filtered("qrTagId == $0", focusQrTagId)[0] as Road | undefined;
+    if (match) {
+      const idHex = (match._id as any).toHexString();
+      setExpandedAssetId(idHex);
+      setHighlightedAssetId(idHex);
+      setTimeout(() => setHighlightedAssetId(null), 2000);
+    }
+  }
+
   if (roads.length === 0) {
     return (
       <View center style={[layoutStyles.centerContainer]}>
@@ -91,7 +104,14 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
         </View>
 
         {roads.map((road, index) => (
-          <Card key={road._id.toString()} style={[layoutStyles.mb3]}>
+          <Card
+            key={road._id.toString()}
+            style={
+              highlightedAssetId === road._id.toHexString()
+                ? [layoutStyles.mb3, { borderWidth: 2, borderColor: "#007AFF" }]
+                : [layoutStyles.mb3]
+            }
+          >
             <View row style={[layoutStyles.mb2]}>
               <View style={[layoutStyles.flex]}>
                 <Text variant="h4" style={[layoutStyles.mb1]}>
