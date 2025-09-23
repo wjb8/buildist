@@ -37,10 +37,11 @@ export class Inspection extends Realm.Object {
   }
 
   get scoreCategory(): "excellent" | "good" | "fair" | "poor" | "critical" {
-    if (this.score >= 9) return "excellent";
-    if (this.score >= 7) return "good";
-    if (this.score >= 5) return "fair";
-    if (this.score >= 3) return "poor";
+    // 1–5 scale
+    if (this.score >= 5) return "excellent";
+    if (this.score >= 4) return "good";
+    if (this.score >= 3) return "fair";
+    if (this.score >= 2) return "poor";
     return "critical";
   }
 

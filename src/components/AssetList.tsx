@@ -8,9 +8,11 @@ import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Divider } from "./Divider";
 import QRCodeDisplay from "./QRCodeDisplay";
+import NewInspectionForm from "./NewInspectionForm";
 import { layoutStyles } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
+import { Inspection } from "@/storage/models/Inspection";
 
 interface AssetListProps {
   onRefresh?: () => void;
@@ -20,6 +22,7 @@ interface AssetListProps {
 export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
   const realm = useRealm();
   const roads = useQuery(Road);
+  const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState(false);
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
@@ -192,6 +195,51 @@ export default function AssetList({ onRefresh, refreshing }: AssetListProps) {
                   {road.qrTagId || "Auto-generated"}
                 </Text>
               </View>
+            </View>
+
+            <View row style={[layoutStyles.mt2]}>
+              <Button
+                variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
+                onPress={() =>
+                  setExpandedAssetId(
+                    expandedAssetId === road._id.toHexString() ? null : road._id.toHexString()
+                  )
+                }
+                size="small"
+              >
+                {expandedAssetId === road._id.toHexString() ? "Hide Inspection" : "Add Inspection"}
+              </Button>
+            </View>
+
+            {expandedAssetId === road._id.toHexString() && (
+              <NewInspectionForm
+                assetId={road._id.toHexString()}
+                onCreated={() => setExpandedAssetId(null)}
+              />
+            )}
+
+            {/* Inspections list */}
+            <View style={[layoutStyles.mt2]}>
+              <Text variant="bodySmall" color="neutral">
+                Recent Inspections
+              </Text>
+              {useQuery(Inspection)
+                .filtered("assetId == $0", road._id.toHexString())
+                .sorted("timestamp", true)
+                .slice(0, 3)
+                .map((insp: Inspection & any) => (
+                  <View key={insp._id.toHexString()} style={[layoutStyles.mt1]}>
+                    <Text variant="body">
+                      {insp.timestamp.toLocaleDateString()} • Score {insp.score}{" "}
+                      {insp.maintenanceNeeded ? "• maintenance" : ""}
+                    </Text>
+                    {insp.description && (
+                      <Text variant="bodySmall" color="neutral">
+                        {insp.description}
+                      </Text>
+                    )}
+                  </View>
+                ))}
             </View>
 
             {index < roads.length - 1 && <Divider style={[layoutStyles.mt3]} />}

@@ -16,7 +16,7 @@ export class QRService {
       const realm = await getRealm();
 
       // Find asset by QR tag ID
-      const asset = realm.objects("Road").filtered("qrTagId == $0", qrTagId)[0] as Road | undefined;
+      const asset = realm.objects(Road).filtered("qrTagId == $0", qrTagId)[0];
 
       if (!asset) {
         return {
@@ -61,7 +61,7 @@ export class QRService {
   static async isQRTagIdInUse(qrTagId: string): Promise<boolean> {
     try {
       const realm = await getRealm();
-      const existingAsset = realm.objects("Road").filtered("qrTagId == $0", qrTagId)[0];
+      const existingAsset = realm.objects(Road).filtered("qrTagId == $0", qrTagId)[0];
       return !!existingAsset;
     } catch (error) {
       console.error("Error checking QR tag ID:", error);
@@ -69,4 +69,3 @@ export class QRService {
     }
   }
 }
-

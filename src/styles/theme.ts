@@ -71,7 +71,7 @@ export const colors = {
       error: colorTokens.error.light,
     },
   },
-} as const;
+};
 
 // Typography with semantic mappings
 export const typography = {
@@ -150,7 +150,7 @@ export const typography = {
       },
     },
   },
-} as const;
+};
 
 // Spacing with semantic mappings
 export const spacing = {
@@ -190,7 +190,7 @@ export const spacing = {
       margin: spacingTokens.sm,
     },
   },
-} as const;
+};
 
 // Border radius with semantic mappings
 export const borderRadius = {
@@ -205,7 +205,7 @@ export const borderRadius = {
     modal: borderRadiusTokens.lg,
     badge: borderRadiusTokens.full,
   },
-} as const;
+};
 
 // Shadows with semantic mappings
 export const shadows = {
@@ -220,7 +220,7 @@ export const shadows = {
     dropdown: shadowTokens.md,
     tooltip: shadowTokens.sm,
   },
-} as const;
+};
 
 // Layout with semantic mappings
 export const layout = {
@@ -255,7 +255,7 @@ export const layout = {
       margin: spacingTokens.sm,
     },
   },
-} as const;
+};
 
 // Animation with semantic mappings
 export const animation = {
@@ -278,7 +278,7 @@ export const animation = {
       slow: animationTokens.slow,
     },
   },
-} as const;
+};
 
 // Z-index with semantic mappings
 export const zIndex = {
@@ -294,7 +294,7 @@ export const zIndex = {
     tooltip: zIndexTokens.tooltip,
     toast: zIndexTokens.toast,
   },
-} as const;
+};
 
 // Export the complete theme
 export const theme = {
@@ -306,7 +306,7 @@ export const theme = {
   layout,
   animation,
   zIndex,
-} as const;
+};
 
 // Type exports for TypeScript
 export type Theme = typeof theme;

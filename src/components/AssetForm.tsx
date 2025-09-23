@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, Alert } from "react-native";
+import { ScrollView, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { AssetType, AssetCondition, RoadSurfaceType, TrafficVolume, type RoadData } from "@/types";
 import { getRealm } from "@/storage/realm";
 import Realm from "realm";
@@ -156,7 +156,7 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
     required: boolean = false
   ) => (
     <View style={[layoutStyles.mb3]}>
-      <Text variant="bodySmall" style={[inputStyles.label]}>
+      <Text variant="bodySmall" style={[layoutStyles.mb1]}>
         {label} {required && <Text color="error">*</Text>}
       </Text>
       <View style={[layoutStyles.rowCenter, { gap: spacing.sm }]}>
@@ -175,155 +175,165 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
   );
 
   return (
-    <ScrollView style={[layoutStyles.flex]}>
-      <Card style={[layoutStyles.p4]}>
-        <Text variant="h3" style={[layoutStyles.mb4]}>
-          Create New Road Asset
-        </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={spacing.xl}
+      style={[layoutStyles.flex]}
+    >
+      <ScrollView
+        style={[layoutStyles.flex]}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: spacing.xl * 3 }}
+      >
+        <Card style={[layoutStyles.p4]}>
+          <Text variant="h3" style={[layoutStyles.mb4]}>
+            Create New Road Asset
+          </Text>
 
-        {errors.length > 0 && (
-          <View
-            style={[
-              layoutStyles.mb4,
-              {
-                backgroundColor: colors.error.light,
-                padding: spacing.md,
-                borderRadius: spacing.sm,
-              },
-            ]}
+          {errors.length > 0 && (
+            <View
+              style={[
+                layoutStyles.mb4,
+                {
+                  backgroundColor: colors.error.light,
+                  padding: spacing.md,
+                  borderRadius: spacing.sm,
+                },
+              ]}
+            >
+              {errors.map((error, index) => (
+                <Text key={index} color="error" style={[layoutStyles.mb1]}>
+                  • {error}
+                </Text>
+              ))}
+            </View>
+          )}
+
+          <Input
+            label="Road Name *"
+            value={formData.name}
+            onChangeText={(value) => handleInputChange("name", value)}
+            placeholder="Enter road name"
+            style={[layoutStyles.mb3]}
+          />
+
+          <Input
+            label="Location"
+            value={formData.location}
+            onChangeText={(value) => handleInputChange("location", value)}
+            placeholder="Enter road location"
+            style={[layoutStyles.mb3]}
+          />
+
+          {renderEnumPicker(
+            "condition",
+            {
+              [AssetCondition.EXCELLENT]: "Excellent",
+              [AssetCondition.GOOD]: "Good",
+              [AssetCondition.FAIR]: "Fair",
+              [AssetCondition.POOR]: "Poor",
+              [AssetCondition.CRITICAL]: "Critical",
+            },
+            "Condition *",
+            true
+          )}
+
+          {renderEnumPicker(
+            "surfaceType",
+            {
+              [RoadSurfaceType.ASPHALT]: "Asphalt",
+              [RoadSurfaceType.CONCRETE]: "Concrete",
+              [RoadSurfaceType.GRAVEL]: "Gravel",
+              [RoadSurfaceType.DIRT]: "Dirt",
+              [RoadSurfaceType.PAVER]: "Paver",
+              [RoadSurfaceType.OTHER]: "Other",
+            },
+            "Surface Type *",
+            true
+          )}
+
+          {renderEnumPicker(
+            "trafficVolume",
+            {
+              [TrafficVolume.LOW]: "Low",
+              [TrafficVolume.MEDIUM]: "Medium",
+              [TrafficVolume.HIGH]: "High",
+              [TrafficVolume.VERY_HIGH]: "Very High",
+            },
+            "Traffic Volume *",
+            true
+          )}
+
+          <View style={[layoutStyles.flexRow, layoutStyles.mb3]}>
+            <View style={[layoutStyles.flex, layoutStyles.mr2]}>
+              <Input
+                label="Length (m)"
+                value={formData.length}
+                onChangeText={(value) => handleInputChange("length", value)}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={[layoutStyles.flex]}>
+              <Input
+                label="Width (m)"
+                value={formData.width}
+                onChangeText={(value) => handleInputChange("width", value)}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          <View style={[layoutStyles.flexRow, layoutStyles.mb3]}>
+            <View style={[layoutStyles.flex, layoutStyles.mr2]}>
+              <Input
+                label="Lanes"
+                value={formData.lanes}
+                onChangeText={(value) => handleInputChange("lanes", value)}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={[layoutStyles.flex]}>
+              <Input
+                label="Speed Limit (km/h)"
+                value={formData.speedLimit}
+                onChangeText={(value) => handleInputChange("speedLimit", value)}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          <Input
+            label="QR Tag ID"
+            value={formData.qrTagId}
+            onChangeText={(value) => handleInputChange("qrTagId", value)}
+            placeholder="Leave empty to auto-generate"
+            style={[layoutStyles.mb3]}
+          />
+
+          <Input
+            label="Notes"
+            value={formData.notes}
+            onChangeText={(value) => handleInputChange("notes", value)}
+            placeholder="Additional notes"
+            multiline
+            numberOfLines={3}
+            style={[layoutStyles.mb4]}
+          />
+
+          <Button
+            variant="primary"
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+            style={[layoutStyles.fullWidth]}
           >
-            {errors.map((error, index) => (
-              <Text key={index} color="error" style={[layoutStyles.mb1]}>
-                • {error}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        <Input
-          label="Road Name *"
-          value={formData.name}
-          onChangeText={(value) => handleInputChange("name", value)}
-          placeholder="Enter road name"
-          style={[layoutStyles.mb3]}
-        />
-
-        <Input
-          label="Location"
-          value={formData.location}
-          onChangeText={(value) => handleInputChange("location", value)}
-          placeholder="Enter road location"
-          style={[layoutStyles.mb3]}
-        />
-
-        {renderEnumPicker(
-          "condition",
-          {
-            [AssetCondition.EXCELLENT]: "Excellent",
-            [AssetCondition.GOOD]: "Good",
-            [AssetCondition.FAIR]: "Fair",
-            [AssetCondition.POOR]: "Poor",
-            [AssetCondition.CRITICAL]: "Critical",
-          },
-          "Condition *",
-          true
-        )}
-
-        {renderEnumPicker(
-          "surfaceType",
-          {
-            [RoadSurfaceType.ASPHALT]: "Asphalt",
-            [RoadSurfaceType.CONCRETE]: "Concrete",
-            [RoadSurfaceType.GRAVEL]: "Gravel",
-            [RoadSurfaceType.DIRT]: "Dirt",
-            [RoadSurfaceType.PAVER]: "Paver",
-            [RoadSurfaceType.OTHER]: "Other",
-          },
-          "Surface Type *",
-          true
-        )}
-
-        {renderEnumPicker(
-          "trafficVolume",
-          {
-            [TrafficVolume.LOW]: "Low",
-            [TrafficVolume.MEDIUM]: "Medium",
-            [TrafficVolume.HIGH]: "High",
-            [TrafficVolume.VERY_HIGH]: "Very High",
-          },
-          "Traffic Volume *",
-          true
-        )}
-
-        <View style={[layoutStyles.flexRow, layoutStyles.mb3]}>
-          <View style={[layoutStyles.flex, layoutStyles.mr2]}>
-            <Input
-              label="Length (m)"
-              value={formData.length}
-              onChangeText={(value) => handleInputChange("length", value)}
-              placeholder="0"
-              keyboardType="numeric"
-            />
-          </View>
-          <View style={[layoutStyles.flex]}>
-            <Input
-              label="Width (m)"
-              value={formData.width}
-              onChangeText={(value) => handleInputChange("width", value)}
-              placeholder="0"
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        <View style={[layoutStyles.flexRow, layoutStyles.mb3]}>
-          <View style={[layoutStyles.flex, layoutStyles.mr2]}>
-            <Input
-              label="Lanes"
-              value={formData.lanes}
-              onChangeText={(value) => handleInputChange("lanes", value)}
-              placeholder="0"
-              keyboardType="numeric"
-            />
-          </View>
-          <View style={[layoutStyles.flex]}>
-            <Input
-              label="Speed Limit (km/h)"
-              value={formData.speedLimit}
-              onChangeText={(value) => handleInputChange("speedLimit", value)}
-              placeholder="0"
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        <Input
-          label="QR Tag ID"
-          value={formData.qrTagId}
-          onChangeText={(value) => handleInputChange("qrTagId", value)}
-          placeholder="Leave empty to auto-generate"
-          style={[layoutStyles.mb3]}
-        />
-
-        <Input
-          label="Notes"
-          value={formData.notes}
-          onChangeText={(value) => handleInputChange("notes", value)}
-          placeholder="Additional notes"
-          multiline
-          numberOfLines={3}
-          style={[layoutStyles.mb4]}
-        />
-
-        <Button
-          variant="primary"
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          style={[layoutStyles.fullWidth]}
-        >
-          {isSubmitting ? "Creating..." : "Create Road Asset"}
-        </Button>
-      </Card>
-    </ScrollView>
+            {isSubmitting ? "Creating..." : "Create Road Asset"}
+          </Button>
+        </Card>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

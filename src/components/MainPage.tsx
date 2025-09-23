@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, RefreshControl, Alert } from "react-native";
+import { ScrollView, RefreshControl, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -65,58 +65,72 @@ export default function MainPage({ onLogout }: MainPageProps) {
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={spacing.xl}
       style={[layoutStyles.flex]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      <View style={[layoutStyles.p4]}>
-        <View style={[layoutStyles.mb4]}>
-          <View
-            style={[
-              { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-              layoutStyles.mb2,
-            ]}
-          >
-            <Text variant="h2">Buildist Asset Manager</Text>
-            <Button variant="primary" onPress={onLogout} style={{ paddingHorizontal: spacing.sm }}>
-              Logout
-            </Button>
-          </View>
-          <Text variant="body" color="neutral" style={[layoutStyles.mb4]}>
-            Manage your road infrastructure assets offline
-          </Text>
-
-          <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
-            <Button
-              variant={showForm ? "secondary" : "primary"}
-              onPress={() => setShowForm(!showForm)}
-              style={[layoutStyles.flex, layoutStyles.mr2]}
+      <ScrollView
+        style={[layoutStyles.flex]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[layoutStyles.p4]}>
+          <View style={[layoutStyles.mb4]}>
+            <View
+              style={[
+                { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+                layoutStyles.mb2,
+              ]}
             >
-              {showForm ? "Hide Form" : "Add Asset"}
-            </Button>
+              <Text variant="h2">Buildist Asset Manager</Text>
+              <Button
+                variant="primary"
+                onPress={onLogout}
+                style={{ paddingHorizontal: spacing.sm }}
+              >
+                Logout
+              </Button>
+            </View>
+            <Text variant="body" color="neutral" style={[layoutStyles.mb4]}>
+              Manage your road infrastructure assets offline
+            </Text>
 
-            <Button
-              variant="primary"
-              onPress={() => setShowQRScanner(true)}
-              style={[layoutStyles.flex, layoutStyles.ml2]}
-            >
-              Scan QR Code
-            </Button>
+            <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
+              <Button
+                variant={showForm ? "secondary" : "primary"}
+                onPress={() => setShowForm(!showForm)}
+                style={[layoutStyles.flex, layoutStyles.mr2]}
+              >
+                {showForm ? "Hide Form" : "Add Asset"}
+              </Button>
+
+              <Button
+                variant="primary"
+                onPress={() => setShowQRScanner(true)}
+                style={[layoutStyles.flex, layoutStyles.ml2]}
+              >
+                Scan QR Code
+              </Button>
+            </View>
           </View>
+
+          {showForm && (
+            <View style={[layoutStyles.mb4]}>
+              <AssetForm onAssetCreated={handleAssetCreated} />
+            </View>
+          )}
+
+          <AssetList onRefresh={handleRefresh} refreshing={refreshing} />
         </View>
 
-        {showForm && (
-          <View style={[layoutStyles.mb4]}>
-            <AssetForm onAssetCreated={handleAssetCreated} />
-          </View>
+        {showQRScanner && (
+          <QRScanner
+            onQRCodeScanned={handleQRCodeScanned}
+            onClose={() => setShowQRScanner(false)}
+          />
         )}
-
-        <AssetList onRefresh={handleRefresh} refreshing={refreshing} />
-      </View>
-
-      {showQRScanner && (
-        <QRScanner onQRCodeScanned={handleQRCodeScanned} onClose={() => setShowQRScanner(false)} />
-      )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

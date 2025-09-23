@@ -1,6 +1,6 @@
 import { TouchableOpacity, TouchableOpacityProps } from "react-native";
 import type { ReactNode } from "react";
-import { buttonStyles, textStyles, colors } from "../styles";
+import { buttonStyles, textStyles, colors, spacing } from "../styles";
 import { Text } from "./Text";
 
 // Button component
@@ -22,7 +22,7 @@ export const Button = ({
   ...props
 }: ButtonProps) => {
   const getButtonStyle = () => {
-    let baseStyle = { ...buttonStyles[variant] };
+    let baseStyle = { ...buttonStyles[variant] } as any;
 
     if (disabled) {
       Object.assign(baseStyle, buttonStyles[`${variant}Disabled` as keyof typeof buttonStyles]);
@@ -30,6 +30,13 @@ export const Button = ({
 
     if (fullWidth) {
       Object.assign(baseStyle, { width: "100%" });
+    }
+
+    // Size adjustments (reduce vertical height for small/medium)
+    if (size === "small") {
+      Object.assign(baseStyle, { paddingVertical: spacing.sm, minHeight: 40 });
+    } else if (size === "medium") {
+      Object.assign(baseStyle, { paddingVertical: spacing.sm + 4, minHeight: 44 });
     }
 
     return baseStyle;

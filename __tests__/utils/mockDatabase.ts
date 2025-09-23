@@ -1,10 +1,11 @@
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
 import { Inspection } from "@/storage/models/Inspection";
+import Realm from "realm";
 
 export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
   const mockRoad = {
-    id: "road-1",
+    _id: new Realm.BSON.ObjectId(),
     name: "Main Street",
     location: "Downtown",
     condition: AssetCondition.GOOD,
@@ -65,7 +66,7 @@ export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
     inspections: [],
 
     ...overrides,
-  } as unknown as Road;
+  } as Road;
 
   return mockRoad;
 };
@@ -73,7 +74,6 @@ export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
 export const createMockRoadList = (count: number = 3): Road[] => {
   return Array.from({ length: count }, (_, index) => {
     return createMockRoad({
-      id: `road-${index + 1}`,
       name: `Road ${index + 1}`,
       location: `Location ${index + 1}`,
     });
@@ -82,7 +82,7 @@ export const createMockRoadList = (count: number = 3): Road[] => {
 
 export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspection => {
   const mockInspection = {
-    id: "inspection-1",
+    _id: new Realm.BSON.ObjectId(),
     assetId: "road-1",
     inspector: "John Doe",
     description: "Annual road condition assessment",
@@ -93,9 +93,6 @@ export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspe
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     synced: true,
-
-    update: jest.fn(),
-    destroyPermanently: jest.fn(),
 
     ...overrides,
   } as unknown as Inspection;

@@ -83,7 +83,7 @@ export const colorTokens = {
     darkest: "#424242",
     black: "#212121",
   },
-} as const;
+};
 
 export const typographyTokens = {
   // Font sizes (in pixels)
@@ -115,7 +115,7 @@ export const typographyTokens = {
     relaxed: 1.6,
     loose: 1.8,
   },
-} as const;
+};
 
 export const spacingTokens = {
   // Base spacing unit is 4px
@@ -128,7 +128,7 @@ export const spacingTokens = {
   "2xl": 48, // 48px
   "3xl": 64, // 64px
   "4xl": 96, // 96px
-} as const;
+};
 
 export const borderRadiusTokens = {
   none: 0,
@@ -138,7 +138,7 @@ export const borderRadiusTokens = {
   xl: 16,
   "2xl": 24,
   full: 9999, // For circular elements
-} as const;
+};
 
 export const shadowTokens = {
   // iOS shadows with Android elevation
@@ -170,7 +170,7 @@ export const shadowTokens = {
     shadowRadius: 16,
     elevation: 12,
   },
-} as const;
+};
 
 export const layoutTokens = {
   // Header heights
@@ -193,14 +193,14 @@ export const layoutTokens = {
   input: {
     height: 48,
   },
-} as const;
+};
 
 export const animationTokens = {
   // Animation durations (in milliseconds)
   fast: 150,
   normal: 300,
   slow: 500,
-} as const;
+};
 
 export const zIndexTokens = {
   // Z-index scale for layering
@@ -217,7 +217,7 @@ export const zIndexTokens = {
   skipLink: 1600,
   toast: 1700,
   tooltip: 1800,
-} as const;
+};
 
 // Export all tokens
 export const tokens = {
@@ -229,7 +229,7 @@ export const tokens = {
   layout: layoutTokens,
   animation: animationTokens,
   zIndex: zIndexTokens,
-} as const;
+};
 
 // Type exports
 export type ColorTokens = typeof colorTokens;
