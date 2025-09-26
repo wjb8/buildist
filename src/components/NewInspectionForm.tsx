@@ -17,6 +17,9 @@ import { Input } from "./Input";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { colors, layoutStyles, spacing, inputStyles } from "@/styles";
+import Select from "./Select";
+import { AssetCondition } from "@/types";
+import { Road } from "@/storage/models/assets/Road";
 
 interface NewInspectionFormProps {
   assetId: string;
@@ -30,6 +33,8 @@ interface FormState {
   maintenanceNeeded: boolean;
   nextDue: Date | null;
   showDatePicker?: boolean;
+  updateAsset: boolean;
+  newAssetCondition?: AssetCondition;
 }
 
 const initialState: FormState = {
@@ -39,6 +44,8 @@ const initialState: FormState = {
   maintenanceNeeded: false,
   nextDue: null,
   showDatePicker: false,
+  updateAsset: false,
+  newAssetCondition: undefined,
 };
 
 export default function NewInspectionForm({ assetId, onCreated }: NewInspectionFormProps) {
@@ -94,6 +101,15 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           updatedAt: now,
           synced: false,
         });
+
+        if (form.updateAsset && form.newAssetCondition) {
+          const road = realm.objectForPrimaryKey<Road>("Road", new Realm.BSON.ObjectId(assetId));
+          if (road) {
+            road.condition = form.newAssetCondition;
+            road.updatedAt = now;
+            road.synced = false;
+          }
+        }
       });
 
       Alert.alert("Success", "Inspection recorded.");
@@ -163,6 +179,41 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           multiline
           style={[layoutStyles.mb3]}
         />
+
+        <View style={[layoutStyles.mb3]}>
+          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
+            Update Asset (optional)
+          </Text>
+          <View
+            row
+            style={[layoutStyles.mb2, layoutStyles.rowCenter, { justifyContent: "space-between" }]}
+          >
+            <Text variant="body">Update condition</Text>
+            <Switch
+              value={form.updateAsset}
+              onValueChange={(v) => setForm((prev) => ({ ...prev, updateAsset: v }))}
+              thumbColor={form.updateAsset ? colors.success.main : colors.border.medium}
+              trackColor={{ true: colors.success.light, false: colors.border.medium }}
+            />
+          </View>
+
+          {form.updateAsset && (
+            <Select
+              label="New Asset Condition"
+              value={form.newAssetCondition || AssetCondition.GOOD}
+              onChange={(v) =>
+                setForm((prev) => ({ ...prev, newAssetCondition: v as AssetCondition }))
+              }
+              options={[
+                { value: AssetCondition.EXCELLENT, label: "Excellent" },
+                { value: AssetCondition.GOOD, label: "Good" },
+                { value: AssetCondition.FAIR, label: "Fair" },
+                { value: AssetCondition.POOR, label: "Poor" },
+                { value: AssetCondition.CRITICAL, label: "Critical" },
+              ]}
+            />
+          )}
+        </View>
 
         <View
           row

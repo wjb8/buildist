@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ScrollView, RefreshControl } from "react-native";
+import { ScrollView, RefreshControl, Modal } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { View } from "./View";
 import { Text } from "./Text";
@@ -9,10 +9,12 @@ import { Badge } from "./Badge";
 import { Divider } from "./Divider";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
+import EditAssetForm from "./EditAssetForm";
 import { layoutStyles, colors, spacing } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
 import { Inspection } from "@/storage/models/Inspection";
+import Realm from "realm";
 import {
   defaultAttentionConfig,
   getAttentionFlags,
@@ -34,6 +36,8 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const [showQRCodes, setShowQRCodes] = useState(false);
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<"attention" | "all">("attention");
+  const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
+
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -339,6 +343,14 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               >
                 {expandedAssetId === road._id.toHexString() ? "Hide Inspection" : "Add Inspection"}
               </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                style={{ marginLeft: spacing.sm }}
+                onPress={() => setEditingRoadId(road._id.toHexString())}
+              >
+                Edit
+              </Button>
             </View>
 
             {expandedAssetId === road._id.toHexString() && (
@@ -376,6 +388,24 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           </Card>
         ))}
       </View>
+
+      <Modal
+        visible={!!editingRoadId}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditingRoadId(null)}
+      >
+        {editingRoadId && (
+          <EditAssetForm
+            road={roads.filtered("_id == $0", new Realm.BSON.ObjectId(editingRoadId))[0] as Road}
+            onClose={() => setEditingRoadId(null)}
+            onSaved={() => {
+              setHighlightedAssetId(editingRoadId);
+              setTimeout(() => setHighlightedAssetId(null), 1500);
+            }}
+          />
+        )}
+      </Modal>
     </ScrollView>
   );
 }
