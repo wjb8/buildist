@@ -69,72 +69,129 @@ export default function MainPage({ onLogout }: MainPageProps) {
       keyboardVerticalOffset={spacing.xl}
       style={[layoutStyles.flex]}
     >
-      <ScrollView
-        style={[layoutStyles.flex]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[layoutStyles.p4]}>
-          <View style={[layoutStyles.mb4]}>
-            <View
-              style={[
-                { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-                layoutStyles.mb2,
-              ]}
-            >
-              <Text variant="h2">Buildist Asset Manager</Text>
-              <Button
-                variant="primary"
-                onPress={onLogout}
-                style={{ paddingHorizontal: spacing.sm }}
+      {showForm ? (
+        <View style={[layoutStyles.flex]}>
+          <View style={[layoutStyles.flex, layoutStyles.p4]}>
+            <View style={[layoutStyles.mb4]}>
+              <View
+                style={[
+                  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+                  layoutStyles.mb2,
+                ]}
               >
-                Logout
-              </Button>
+                <Text variant="h2">Buildist</Text>
+                <Button
+                  variant="primary"
+                  onPress={onLogout}
+                  style={{ paddingHorizontal: spacing.sm }}
+                >
+                  Logout
+                </Button>
+              </View>
+
+              <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
+                <Button
+                  variant={showForm ? "secondary" : "primary"}
+                  onPress={() => setShowForm(!showForm)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.mr2]}
+                >
+                  {showForm ? "Hide Form" : "Add Asset"}
+                </Button>
+
+                <Button
+                  variant="primary"
+                  onPress={() => setShowQRScanner(true)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.ml2]}
+                >
+                  Scan QR Code
+                </Button>
+              </View>
             </View>
-            <Text variant="body" color="neutral" style={[layoutStyles.mb4]}>
-              Manage your road infrastructure assets offline
-            </Text>
 
-            <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
-              <Button
-                variant={showForm ? "secondary" : "primary"}
-                onPress={() => setShowForm(!showForm)}
-                style={[layoutStyles.flex, layoutStyles.mr2]}
-              >
-                {showForm ? "Hide Form" : "Add Asset"}
-              </Button>
-
-              <Button
-                variant="primary"
-                onPress={() => setShowQRScanner(true)}
-                style={[layoutStyles.flex, layoutStyles.ml2]}
-              >
-                Scan QR Code
-              </Button>
+            <View style={[layoutStyles.flex]}>
+              <AssetForm onAssetCreated={handleAssetCreated} />
             </View>
           </View>
 
-          {showForm && (
-            <View style={[layoutStyles.mb4]}>
-              <AssetForm onAssetCreated={handleAssetCreated} />
-            </View>
-          )}
-
-          <AssetList onRefresh={handleRefresh} refreshing={refreshing} focusQrTagId={focusQrTag} />
+          <Modal
+            visible={showQRScanner}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={() => setShowQRScanner(false)}
+          >
+            <QRScanner
+              onQRCodeScanned={handleQRCodeScanned}
+              onClose={() => setShowQRScanner(false)}
+            />
+          </Modal>
         </View>
-
-        <Modal
-          visible={showQRScanner}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={() => setShowQRScanner(false)}
+      ) : (
+        <ScrollView
+          style={[layoutStyles.flex]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          keyboardShouldPersistTaps="handled"
         >
-          <QRScanner
-            onQRCodeScanned={handleQRCodeScanned}
-            onClose={() => setShowQRScanner(false)}
-          />
-        </Modal>
-      </ScrollView>
+          <View style={[layoutStyles.p4]}>
+            <View style={[layoutStyles.mb4]}>
+              <View
+                style={[
+                  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+                  layoutStyles.mb2,
+                ]}
+              >
+                <Text variant="h2">Buildist</Text>
+                <Button
+                  variant="primary"
+                  onPress={onLogout}
+                  style={{ paddingHorizontal: spacing.sm }}
+                >
+                  Logout
+                </Button>
+              </View>
+
+              <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
+                <Button
+                  variant={showForm ? "secondary" : "primary"}
+                  onPress={() => setShowForm(!showForm)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.mr2]}
+                >
+                  {showForm ? "Hide Form" : "Add Asset"}
+                </Button>
+
+                <Button
+                  variant="primary"
+                  onPress={() => setShowQRScanner(true)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.ml2]}
+                >
+                  Scan QR Code
+                </Button>
+              </View>
+            </View>
+
+            <AssetList
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+              focusQrTagId={focusQrTag}
+            />
+          </View>
+
+          <Modal
+            visible={showQRScanner}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={() => setShowQRScanner(false)}
+          >
+            <QRScanner
+              onQRCodeScanned={handleQRCodeScanned}
+              onClose={() => setShowQRScanner(false)}
+            />
+          </Modal>
+        </ScrollView>
+      )}
     </KeyboardAvoidingView>
   );
 }

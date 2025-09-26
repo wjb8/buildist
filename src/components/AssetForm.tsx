@@ -7,6 +7,7 @@ import { View } from "./View";
 import { Text } from "./Text";
 import { Input } from "./Input";
 import { Button } from "./Button";
+import Select from "./Select";
 import { Card } from "./Card";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles, inputStyles } from "@/styles";
 
@@ -149,28 +150,19 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
     }
   };
 
-  const renderEnumPicker = (
+  const renderEnumSelect = (
     field: keyof FormData,
     enumValues: Record<string, string>,
     label: string,
     required: boolean = false
   ) => (
     <View style={[layoutStyles.mb3]}>
-      <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-        {label} {required && <Text color="error">*</Text>}
-      </Text>
-      <View style={[layoutStyles.rowCenter, { gap: spacing.sm }]}>
-        {Object.entries(enumValues).map(([key, value]) => (
-          <Button
-            key={key}
-            variant={formData[field] === key ? "primary" : "secondary"}
-            size="small"
-            onPress={() => handleEnumChange(field, key)}
-          >
-            {value}
-          </Button>
-        ))}
-      </View>
+      <Select
+        label={`${label} ${required ? "*" : ""}`.trim()}
+        value={String(formData[field])}
+        onChange={(val) => handleEnumChange(field, val)}
+        options={Object.entries(enumValues).map(([key, value]) => ({ value: key, label: value }))}
+      />
     </View>
   );
 
@@ -183,7 +175,8 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
       <ScrollView
         style={[layoutStyles.flex]}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: spacing.xl * 3 }}
+        nestedScrollEnabled
+        contentContainerStyle={{ paddingBottom: spacing.xl * 3, flexGrow: 1 }}
       >
         <Card style={[layoutStyles.p4]}>
           <Text variant="h3" style={[layoutStyles.mb4]}>
@@ -225,7 +218,7 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
             style={[layoutStyles.mb3]}
           />
 
-          {renderEnumPicker(
+          {renderEnumSelect(
             "condition",
             {
               [AssetCondition.EXCELLENT]: "Excellent",
@@ -238,7 +231,7 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
             true
           )}
 
-          {renderEnumPicker(
+          {renderEnumSelect(
             "surfaceType",
             {
               [RoadSurfaceType.ASPHALT]: "Asphalt",
@@ -252,7 +245,7 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
             true
           )}
 
-          {renderEnumPicker(
+          {renderEnumSelect(
             "trafficVolume",
             {
               [TrafficVolume.LOW]: "Low",

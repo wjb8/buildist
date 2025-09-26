@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, RefreshControl } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { View } from "./View";
@@ -9,10 +9,16 @@ import { Badge } from "./Badge";
 import { Divider } from "./Divider";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
-import { layoutStyles } from "@/styles";
+import { layoutStyles, colors, spacing } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
 import { Inspection } from "@/storage/models/Inspection";
+import {
+  defaultAttentionConfig,
+  getAttentionFlags,
+  computeAttentionScore,
+  getAttentionReasonBadges,
+} from "@/config/attention";
 
 interface AssetListProps {
   onRefresh?: () => void;
@@ -23,9 +29,11 @@ interface AssetListProps {
 export default function AssetList({ onRefresh, refreshing, focusQrTagId }: AssetListProps) {
   const realm = useRealm();
   const roads = useQuery(Road);
+  const allInspections = useQuery(Inspection);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState(false);
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"attention" | "all">("attention");
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
       case AssetCondition.EXCELLENT:
@@ -73,6 +81,52 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     }
   }
 
+  // Precompute latest inspection per asset
+  const latestInspectionByAssetId = useMemo(() => {
+    const map = new Map<string, Inspection>();
+    // Sort once by timestamp desc
+    const sorted = [...allInspections].sort(
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+    );
+    for (const insp of sorted) {
+      if (!map.has(insp.assetId)) map.set(insp.assetId, insp);
+    }
+    return map;
+  }, [allInspections]);
+
+  // Compute attention metadata and sorting
+  const computedRoads = useMemo(() => {
+    return roads.map((road) => {
+      const idHex = road._id.toHexString();
+      const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
+      const flags = getAttentionFlags(road as any, latestInspection, defaultAttentionConfig);
+      const attentionScore = computeAttentionScore(
+        road as any,
+        flags,
+        latestInspection,
+        defaultAttentionConfig
+      );
+      return { road, latestInspection, flags, attentionScore };
+    });
+  }, [roads, latestInspectionByAssetId]);
+
+  const attentionRoads = useMemo(
+    () =>
+      computedRoads
+        .filter(
+          (r) => r.flags.overdue || r.flags.dueSoon || r.flags.maintenance || r.flags.poorCondition
+        )
+        .sort((a, b) => b.attentionScore - a.attentionScore),
+    [computedRoads]
+  );
+
+  const allRoadsSorted = useMemo(
+    () => [...computedRoads].sort((a, b) => b.attentionScore - a.attentionScore),
+    [computedRoads]
+  );
+
+  const displayed = mode === "attention" ? attentionRoads : allRoadsSorted;
+
   if (roads.length === 0) {
     return (
       <View center style={[layoutStyles.centerContainer]}>
@@ -92,23 +146,57 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
       refreshControl={<RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />}
     >
       <View style={[layoutStyles.p4]}>
-        <View style={[layoutStyles.flexRow, layoutStyles.rowSpaceBetween, layoutStyles.mb4]}>
-          <Text variant="h3">Current Road Assets ({roads.length})</Text>
+        <View style={[layoutStyles.mb2]}>
+          <Text variant="h3">
+            {mode === "attention"
+              ? `Needs Attention (${attentionRoads.length})`
+              : `All Assets (${roads.length})`}
+          </Text>
+        </View>
+        <View style={[layoutStyles.flexRow, { flexWrap: "wrap" }, layoutStyles.mb4]}>
+          <Button
+            variant={mode === "attention" ? "primary" : "secondary"}
+            onPress={() => setMode("attention")}
+            size="small"
+            style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
+          >
+            Needs Attention
+          </Button>
+          <Button
+            variant={mode === "all" ? "primary" : "secondary"}
+            onPress={() => setMode("all")}
+            size="small"
+            style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
+          >
+            All
+          </Button>
           <Button
             variant="secondary"
             onPress={() => setShowQRCodes(!showQRCodes)}
-            style={{ paddingHorizontal: 12 }}
+            size="small"
+            style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
           >
             {showQRCodes ? "Hide QR" : "Show QR"}
           </Button>
         </View>
 
-        {roads.map((road, index) => (
+        {mode === "attention" && attentionRoads.length === 0 && (
+          <View style={[layoutStyles.mb3]}>
+            <Text variant="body" color="neutral" style={[layoutStyles.mb2]}>
+              All assets are in good standing.
+            </Text>
+            <Button variant="secondary" onPress={() => setMode("all")} size="small">
+              Show All Assets
+            </Button>
+          </View>
+        )}
+
+        {displayed.map(({ road, latestInspection, flags }, index) => (
           <Card
             key={road._id.toString()}
             style={
               highlightedAssetId === road._id.toHexString()
-                ? [layoutStyles.mb3, { borderWidth: 2, borderColor: "#007AFF" }]
+                ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
                 : [layoutStyles.mb3]
             }
           >
@@ -127,6 +215,28 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                 <Badge variant={getConditionColor(road.condition)}>{road.condition}</Badge>
               </View>
             </View>
+
+            {/* Attention reasons */}
+            {(() => {
+              const reasons = getAttentionReasonBadges(flags);
+              if (reasons.length === 0) return null;
+              const badgeVariant = (reason: string) => {
+                if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
+                if (reason === "Due soon" || reason === "Poor condition") return "warning" as const;
+                return "secondary" as const;
+              };
+              return (
+                <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
+                  {reasons.map((r) => (
+                    <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
+                      <Badge variant={badgeVariant(r)} size="small">
+                        {r}
+                      </Badge>
+                    </View>
+                  ))}
+                </View>
+              );
+            })()}
 
             <View row style={[layoutStyles.mb2]}>
               <View style={[layoutStyles.flex]}>
@@ -243,15 +353,15 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               <Text variant="bodySmall" color="neutral">
                 Recent Inspections
               </Text>
-              {useQuery(Inspection)
-                .filtered("assetId == $0", road._id.toHexString())
-                .sorted("timestamp", true)
+              {[...allInspections]
+                .filter((i) => i.assetId === road._id.toHexString())
+                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
                 .slice(0, 3)
-                .map((insp: Inspection & any) => (
+                .map((insp) => (
                   <View key={insp._id.toHexString()} style={[layoutStyles.mt1]}>
                     <Text variant="body">
-                      {insp.timestamp.toLocaleDateString()} • Score {insp.score}{" "}
-                      {insp.maintenanceNeeded ? "• maintenance" : ""}
+                      {insp.timestamp.toLocaleDateString()} • Score {insp.score}
+                      {insp.maintenanceNeeded ? " • maintenance" : ""}
                     </Text>
                     {insp.description && (
                       <Text variant="bodySmall" color="neutral">
@@ -262,7 +372,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                 ))}
             </View>
 
-            {index < roads.length - 1 && <Divider style={[layoutStyles.mt3]} />}
+            {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
           </Card>
         ))}
       </View>

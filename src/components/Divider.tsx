@@ -1,7 +1,5 @@
 import { View, ViewStyle } from "react-native";
 import { colors, spacing } from "../styles";
-
-// Divider component
 interface DividerProps {
   style?: ViewStyle | ViewStyle[];
   vertical?: boolean;

@@ -7,7 +7,7 @@ import { Text } from "./Text";
 interface ButtonProps extends TouchableOpacityProps {
   children?: ReactNode;
   variant?: "primary" | "secondary" | "text" | "danger";
-  size?: "small" | "medium" | "large";
+  size?: "xsmall" | "small" | "medium" | "large";
   disabled?: boolean;
   fullWidth?: boolean;
 }
@@ -32,11 +32,21 @@ export const Button = ({
       Object.assign(baseStyle, { width: "100%" });
     }
 
-    // Size adjustments (reduce vertical height for small/medium)
-    if (size === "small") {
-      Object.assign(baseStyle, { paddingVertical: spacing.sm, minHeight: 40 });
+    // Size adjustments (compact footprint)
+    if (size === "xsmall") {
+      Object.assign(baseStyle, {
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.sm,
+        minHeight: 32,
+      });
+    } else if (size === "small") {
+      Object.assign(baseStyle, {
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.md,
+        minHeight: 36,
+      });
     } else if (size === "medium") {
-      Object.assign(baseStyle, { paddingVertical: spacing.sm + 4, minHeight: 44 });
+      Object.assign(baseStyle, { paddingVertical: spacing.sm, minHeight: 44 });
     }
 
     return baseStyle;
@@ -45,6 +55,9 @@ export const Button = ({
   const getTextStyle = () => {
     let textStyle;
     switch (size) {
+      case "xsmall":
+        textStyle = textStyles.buttonSmall;
+        break;
       case "small":
         textStyle = textStyles.buttonSmall;
         break;
