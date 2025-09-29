@@ -205,11 +205,9 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
                 setForm((prev) => ({ ...prev, newAssetCondition: v as AssetCondition }))
               }
               options={[
-                { value: AssetCondition.EXCELLENT, label: "Excellent" },
                 { value: AssetCondition.GOOD, label: "Good" },
                 { value: AssetCondition.FAIR, label: "Fair" },
                 { value: AssetCondition.POOR, label: "Poor" },
-                { value: AssetCondition.CRITICAL, label: "Critical" },
               ]}
             />
           )}

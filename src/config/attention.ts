@@ -63,13 +63,7 @@ export function conditionIsAtOrBelow(
   condition: AssetCondition,
   threshold: AssetCondition
 ): boolean {
-  const order: AssetCondition[] = [
-    AssetCondition.EXCELLENT,
-    AssetCondition.GOOD,
-    AssetCondition.FAIR,
-    AssetCondition.POOR,
-    AssetCondition.CRITICAL,
-  ];
+  const order: AssetCondition[] = [AssetCondition.GOOD, AssetCondition.FAIR, AssetCondition.POOR];
   return order.indexOf(condition) >= order.indexOf(threshold);
 }
 
@@ -96,11 +90,9 @@ export function computeAttentionScore(
 
   // Condition severity
   const conditionWeights: Record<AssetCondition, number> = {
-    [AssetCondition.EXCELLENT]: 0,
-    [AssetCondition.GOOD]: 5,
+    [AssetCondition.GOOD]: 0,
     [AssetCondition.FAIR]: 10,
     [AssetCondition.POOR]: 20,
-    [AssetCondition.CRITICAL]: 30,
   };
   score += conditionWeights[asset.condition];
 

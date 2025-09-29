@@ -1,8 +1,10 @@
+import { AssetType, AssetCondition } from "./asset";
+
 export type SortOrder = "asc" | "desc";
 
 export interface AssetFilters {
-  type?: import("./asset").AssetType;
-  condition?: import("./asset").AssetCondition;
+  type?: AssetType;
+  condition?: AssetCondition;
   location?: string;
   searchQuery?: string;
 }

@@ -40,15 +40,11 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
-      case AssetCondition.EXCELLENT:
-        return "success";
       case AssetCondition.GOOD:
         return "success";
       case AssetCondition.FAIR:
         return "warning";
       case AssetCondition.POOR:
-        return "error";
-      case AssetCondition.CRITICAL:
         return "error";
       default:
         return "secondary";

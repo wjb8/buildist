@@ -28,7 +28,7 @@ export const seedDemoData = async () => {
       {
         name: "Riverside Drive",
         location: "Riverside Park Area",
-        condition: AssetCondition.EXCELLENT,
+        condition: AssetCondition.GOOD,
         notes: "Recently resurfaced scenic route along the river",
         surfaceType: RoadSurfaceType.ASPHALT,
         trafficVolume: TrafficVolume.MEDIUM,

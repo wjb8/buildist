@@ -5,10 +5,6 @@ import { Inspection } from "./models/Inspection";
 const realmConfig: Realm.Configuration = {
   schema: [Road, Inspection],
   schemaVersion: 1,
-  onMigration: (oldRealm, newRealm) => {
-    // this will run when schemaVersion is incremented
-    console.log("Realm migration running...");
-  },
 };
 
 // Export schema for RealmProvider

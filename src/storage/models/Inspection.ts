@@ -36,13 +36,11 @@ export class Inspection extends Realm.Object {
     return new Date() > this.nextDue;
   }
 
-  get scoreCategory(): "excellent" | "good" | "fair" | "poor" | "critical" {
-    // 1–5 scale
-    if (this.score >= 5) return "excellent";
+  get scoreCategory(): "good" | "fair" | "poor" {
+    // Map 1–5 to 3-level buckets
     if (this.score >= 4) return "good";
     if (this.score >= 3) return "fair";
-    if (this.score >= 2) return "poor";
-    return "critical";
+    return "poor";
   }
 
   get daysUntilDue(): number | null {

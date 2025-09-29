@@ -8,12 +8,12 @@ describe("Road Model", () => {
       const road = createMockRoad({
         name: "Test Road",
         location: "Test Location",
-        condition: AssetCondition.EXCELLENT,
+        condition: AssetCondition.GOOD,
       });
 
       expect(road.name).toBe("Test Road");
       expect(road.location).toBe("Test Location");
-      expect(road.condition).toBe(AssetCondition.EXCELLENT);
+      expect(road.condition).toBe(AssetCondition.GOOD);
     });
 
     it("should have default values", () => {
