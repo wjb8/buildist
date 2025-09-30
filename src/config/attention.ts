@@ -31,6 +31,8 @@ export interface AttentionFlags {
   dueSoon: boolean;
   maintenance: boolean;
   poorCondition: boolean;
+  repairPlan: boolean;
+  councilFlag: boolean;
 }
 
 export function getAttentionFlags(
@@ -56,7 +58,14 @@ export function getAttentionFlags(
 
   const poorCondition = conditionIsAtOrBelow(asset.condition, config.conditionThreshold);
 
-  return { overdue, dueSoon, maintenance, poorCondition };
+  // Admin recommendations
+  const issueType = latestInspection?.issueType || null;
+  const priority = latestInspection?.priority || null;
+  // Repair plan when condition is explicitly poor or issue is potholes
+  const repairPlan = asset.condition === AssetCondition.POOR || issueType === "potholes";
+  const councilFlag = priority === "high";
+
+  return { overdue, dueSoon, maintenance, poorCondition, repairPlan, councilFlag };
 }
 
 export function conditionIsAtOrBelow(
@@ -77,6 +86,7 @@ export function computeAttentionScore(
 
   if (flags.overdue) score += 100;
   if (flags.maintenance) score += 80;
+  if (flags.councilFlag) score += 40; // elevate high-priority items
   if (flags.dueSoon) {
     // Sooner due dates rank higher
     const daysUntil = latestInspection?.nextDue
@@ -116,5 +126,7 @@ export function getAttentionReasonBadges(flags: AttentionFlags): string[] {
   if (flags.maintenance) badges.push("Maintenance");
   if (flags.dueSoon) badges.push("Due soon");
   if (flags.poorCondition) badges.push("Poor condition");
+  if (flags.repairPlan) badges.push("Repair plan");
+  if (flags.councilFlag) badges.push("Council flag");
   return badges;
 }

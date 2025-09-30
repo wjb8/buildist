@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardTypeOptions,
@@ -7,7 +7,12 @@ import {
   Pressable,
   KeyboardAvoidingView,
   ScrollView,
+  Modal,
+  Image,
+  View as RNView,
 } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Realm from "realm";
 import { getRealm } from "@/storage/realm";
@@ -35,6 +40,11 @@ interface FormState {
   showDatePicker?: boolean;
   updateAsset: boolean;
   newAssetCondition?: AssetCondition;
+  issueType: string; // potholes | cracks | drainage | other
+  priority: string; // low | medium | high
+  photos: string[];
+  inspectionDate: Date | null;
+  showInspectionDatePicker?: boolean;
 }
 
 const initialState: FormState = {
@@ -46,6 +56,11 @@ const initialState: FormState = {
   showDatePicker: false,
   updateAsset: false,
   newAssetCondition: undefined,
+  issueType: "potholes",
+  priority: "medium",
+  photos: [],
+  inspectionDate: null,
+  showInspectionDatePicker: false,
 };
 
 export default function NewInspectionForm({ assetId, onCreated }: NewInspectionFormProps) {
@@ -53,6 +68,10 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [manualEditedMaintenance, setManualEditedMaintenance] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [mediaPermissionStatus, requestMediaPermission] = MediaLibrary.usePermissions();
+  const cameraRef = useRef<any>(null);
 
   // Auto-calc maintenanceNeeded from score<=2 unless manually edited
   useEffect(() => {
@@ -94,8 +113,11 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           inspector: form.inspector.trim(),
           description: form.description.trim(),
           score: scoreNum,
-          timestamp: now,
+          timestamp: form.inspectionDate ?? now,
           maintenanceNeeded: form.maintenanceNeeded,
+          issueType: form.issueType,
+          priority: form.priority,
+          photos: form.photos,
           nextDue: form.nextDue ?? undefined,
           createdAt: now,
           updatedAt: now,
@@ -121,6 +143,50 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
       Alert.alert("Error", "Could not create inspection. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const ensurePermissions = async (): Promise<boolean> => {
+    try {
+      if (!cameraPermission?.granted) {
+        const cam = await requestCameraPermission();
+        if (!cam.granted) return false;
+      }
+      if (!mediaPermissionStatus?.granted) {
+        const med = await requestMediaPermission();
+        if (!med.granted) return false;
+      }
+      return true;
+    } catch (e) {
+      console.error("Permission error", e);
+      return false;
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    const ok = await ensurePermissions();
+    if (!ok) {
+      Alert.alert("Permission Required", "Camera and photo permissions are required.");
+      return;
+    }
+    setShowCamera(true);
+  };
+
+  const handleCapture = async () => {
+    try {
+      if (!cameraRef.current) return;
+      const result = await cameraRef.current.takePictureAsync({
+        quality: 0.7,
+        skipProcessing: true,
+      });
+      if (!result?.uri) return;
+      // Save to library and keep local URI
+      await MediaLibrary.saveToLibraryAsync(result.uri);
+      setForm((prev) => ({ ...prev, photos: [...prev.photos, result.uri] }));
+      setShowCamera(false);
+    } catch (e) {
+      console.error("Failed to capture photo", e);
+      Alert.alert("Error", "Could not capture photo. Please try again.");
     }
   };
 
@@ -179,6 +245,96 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           multiline
           style={[layoutStyles.mb3]}
         />
+
+        {/* Issue Type & Priority */}
+        <View row style={[layoutStyles.mb3]}>
+          <View style={[layoutStyles.flex, layoutStyles.mr2]}>
+            <Select
+              label="Issue Type"
+              value={form.issueType}
+              onChange={(v) => handleChange("issueType", String(v))}
+              options={[
+                { value: "potholes", label: "Potholes" },
+                { value: "cracks", label: "Cracks" },
+                { value: "drainage", label: "Drainage" },
+                { value: "other", label: "Other" },
+              ]}
+            />
+          </View>
+          <View style={[layoutStyles.flex]}>
+            <Select
+              label="Priority"
+              value={form.priority}
+              onChange={(v) => handleChange("priority", String(v))}
+              options={[
+                { value: "low", label: "Low" },
+                { value: "medium", label: "Medium" },
+                { value: "high", label: "High" },
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Inspection Date (override) */}
+        <View style={[layoutStyles.mb3]}>
+          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
+            Inspection Date (optional)
+          </Text>
+          <Pressable
+            onPress={() => handleChange("showInspectionDatePicker", true)}
+            style={[inputStyles.base]}
+          >
+            <Text variant="body">
+              {form.inspectionDate
+                ? form.inspectionDate.toISOString().slice(0, 10)
+                : "Use today's date"}
+            </Text>
+          </Pressable>
+          {form.showInspectionDatePicker && (
+            <DateTimePicker
+              value={form.inspectionDate ?? new Date()}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(_, date) => {
+                if (Platform.OS !== "ios") handleChange("showInspectionDatePicker", false);
+                handleChange("inspectionDate", date ?? null);
+              }}
+            />
+          )}
+          {form.inspectionDate && (
+            <View style={[layoutStyles.mt2, { alignItems: "flex-end" }]}>
+              <Button
+                variant="secondary"
+                size="small"
+                onPress={() => handleChange("inspectionDate", null)}
+              >
+                Clear date
+              </Button>
+            </View>
+          )}
+        </View>
+
+        {/* Photos */}
+        <View style={[layoutStyles.mb3]}>
+          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
+            Photos (optional)
+          </Text>
+          <View row style={[layoutStyles.rowSpaceBetween]}>
+            <Button variant="secondary" size="small" onPress={handleAddPhoto}>
+              Add Photo
+            </Button>
+            {form.photos.length > 0 && <Text variant="bodySmall">{form.photos.length} added</Text>}
+          </View>
+          {form.photos.length > 0 && (
+            <RNView style={{ marginTop: spacing.sm, flexDirection: "row", flexWrap: "wrap" }}>
+              {form.photos.slice(0, 3).map((uri, idx) => (
+                <RNView key={uri} style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}>
+                  <Image source={{ uri }} style={{ width: 72, height: 72, borderRadius: 6 }} />
+                </RNView>
+              ))}
+            </RNView>
+          )}
+        </View>
 
         <View style={[layoutStyles.mb3]}>
           <Text variant="bodySmall" style={[layoutStyles.mb1]}>
@@ -282,6 +438,31 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           </Button>
         </View>
       </Card>
+
+      {/* Camera Modal */}
+      <Modal
+        visible={showCamera}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowCamera(false)}
+      >
+        <View style={[layoutStyles.flex]}>
+          <CameraView ref={cameraRef} style={[layoutStyles.flex]} facing="back">
+            <View
+              style={{ position: "absolute", bottom: 40, left: 0, right: 0, alignItems: "center" }}
+            >
+              <View row>
+                <Button variant="secondary" onPress={() => setShowCamera(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" style={[layoutStyles.ml2]} onPress={handleCapture}>
+                  Capture
+                </Button>
+              </View>
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

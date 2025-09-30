@@ -12,6 +12,9 @@ export class Inspection extends Realm.Object {
       score: "int",
       timestamp: "date",
       maintenanceNeeded: "bool",
+      issueType: "string?", // e.g., potholes, cracks, drainage, other
+      priority: "string?", // low, medium, high
+      photos: "string[]", // local URIs; lists cannot be optional in Realm
       nextDue: "date?",
       createdAt: "date",
       updatedAt: "date",
@@ -26,6 +29,9 @@ export class Inspection extends Realm.Object {
   score!: number;
   timestamp!: Date;
   maintenanceNeeded!: boolean;
+  issueType?: string;
+  priority?: string;
+  photos!: string[];
   nextDue?: Date;
   createdAt!: Date;
   updatedAt!: Date;
