@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ScrollView, RefreshControl, Modal, Pressable } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
+import { FontAwesome } from "@expo/vector-icons";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -35,7 +36,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const roads = useQuery(Road);
   const allInspections = useQuery(Inspection);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
-  const [showQRCodes, setShowQRCodes] = useState(false);
+  const [showQRCodes, setShowQRCodes] = useState<Set<string>>(new Set());
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<"attention" | "all">("attention");
   const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
@@ -174,14 +175,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           >
             All
           </Button>
-          <Button
-            variant="secondary"
-            onPress={() => setShowQRCodes(!showQRCodes)}
-            size="small"
-            style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
-          >
-            {showQRCodes ? "Hide QR" : "Show QR"}
-          </Button>
         </View>
 
         {mode === "attention" && attentionRoads.length === 0 && (
@@ -305,7 +298,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               </View>
             )}
 
-            {showQRCodes && road.qrTagId && (
+            {showQRCodes.has(road._id.toHexString()) && road.qrTagId && (
               <View style={[layoutStyles.mb3]}>
                 <Divider style={[layoutStyles.mb2]} />
                 <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
@@ -358,6 +351,25 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                 onPress={() => setShowAllInspections(road._id.toHexString())}
               >
                 View All
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                style={{ marginLeft: spacing.sm }}
+                onPress={() => {
+                  const assetId = road._id.toHexString();
+                  setShowQRCodes((prev) => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(assetId)) {
+                      newSet.delete(assetId);
+                    } else {
+                      newSet.add(assetId);
+                    }
+                    return newSet;
+                  });
+                }}
+              >
+                <FontAwesome name="qrcode" size={16} color={colors.text.primary} />
               </Button>
             </View>
 
