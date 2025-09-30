@@ -40,8 +40,8 @@ interface FormState {
   showDatePicker?: boolean;
   updateAsset: boolean;
   newAssetCondition?: AssetCondition;
-  issueType: string; // none | potholes | cracks | drainage | other
-  priority: string; // low | medium | high
+  issueType: string | null; // potholes | cracks | drainage | other | null
+  priority: string | null; // low | medium | high | null
   photos: string[];
   inspectionDate: Date | null;
   showInspectionDatePicker?: boolean;
@@ -56,8 +56,8 @@ const initialState: FormState = {
   showDatePicker: false,
   updateAsset: false,
   newAssetCondition: undefined,
-  issueType: "none",
-  priority: "medium",
+  issueType: null,
+  priority: null,
   photos: [],
   inspectionDate: null,
   showInspectionDatePicker: false,
@@ -93,6 +93,12 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
     if (!form.inspector.trim()) nextErrors.push("Inspector is required");
     const scoreNum = parseInt(form.score, 10);
     if (isNaN(scoreNum) || scoreNum < 1 || scoreNum > 5) nextErrors.push("Score must be 1–5");
+
+    // Validate inspection date is not in the future
+    if (form.inspectionDate && form.inspectionDate > new Date()) {
+      nextErrors.push("Inspection date cannot be in the future");
+    }
+
     // nextDue optional; no further validation needed
     setErrors(nextErrors);
     return nextErrors.length === 0;
@@ -115,9 +121,9 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           score: scoreNum,
           timestamp: form.inspectionDate ?? now,
           maintenanceNeeded: form.maintenanceNeeded,
-          issueType: form.issueType,
-          priority: form.priority,
-          photos: form.photos,
+          issueType: form.issueType || undefined,
+          priority: form.priority || undefined,
+          photos: form.photos || [],
           nextDue: form.nextDue ?? undefined,
           createdAt: now,
           updatedAt: now,
@@ -251,10 +257,10 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           <View style={[layoutStyles.flex, layoutStyles.mr2]}>
             <Select
               label="Issue Type"
-              value={form.issueType}
-              onChange={(v) => handleChange("issueType", String(v))}
+              value={form.issueType || ""}
+              onChange={(v) => handleChange("issueType", v === "" ? null : String(v))}
               options={[
-                { value: "none", label: "None" },
+                { value: "", label: "None" },
                 { value: "potholes", label: "Potholes" },
                 { value: "cracks", label: "Cracks" },
                 { value: "drainage", label: "Drainage" },
@@ -265,9 +271,10 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           <View style={[layoutStyles.flex]}>
             <Select
               label="Priority"
-              value={form.priority}
-              onChange={(v) => handleChange("priority", String(v))}
+              value={form.priority || ""}
+              onChange={(v) => handleChange("priority", v === "" ? null : String(v))}
               options={[
+                { value: "", label: "None" },
                 { value: "low", label: "Low" },
                 { value: "medium", label: "Medium" },
                 { value: "high", label: "High" },
@@ -296,6 +303,7 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
               value={form.inspectionDate ?? new Date()}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
+              maximumDate={new Date()}
               onChange={(_, date) => {
                 if (Platform.OS !== "ios") handleChange("showInspectionDatePicker", false);
                 handleChange("inspectionDate", date ?? null);
