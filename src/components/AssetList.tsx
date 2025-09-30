@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ScrollView, RefreshControl, Modal } from "react-native";
+import { ScrollView, RefreshControl, Modal, Pressable } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { View } from "./View";
 import { Text } from "./Text";
@@ -10,6 +10,8 @@ import { Divider } from "./Divider";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
 import EditAssetForm from "./EditAssetForm";
+import InspectionDetail from "./InspectionDetail";
+import AllInspections from "./AllInspections";
 import { layoutStyles, colors, spacing } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
@@ -37,6 +39,8 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<"attention" | "all">("attention");
   const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
+  const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+  const [showAllInspections, setShowAllInspections] = useState<string | null>(null);
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
@@ -347,6 +351,14 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               >
                 Edit
               </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                style={{ marginLeft: spacing.sm }}
+                onPress={() => setShowAllInspections(road._id.toHexString())}
+              >
+                View All
+              </Button>
             </View>
 
             {expandedAssetId === road._id.toHexString() && (
@@ -366,17 +378,36 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                 .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
                 .slice(0, 3)
                 .map((insp) => (
-                  <View key={insp._id.toHexString()} style={[layoutStyles.mt1]}>
+                  <Pressable
+                    key={insp._id.toHexString()}
+                    onPress={() => setSelectedInspection(insp)}
+                    style={[
+                      layoutStyles.mt1,
+                      {
+                        padding: spacing.md,
+                        backgroundColor: colors.neutral.lightest,
+                        borderRadius: spacing.md,
+                        borderWidth: 1,
+                        borderColor: colors.border.light,
+                      },
+                    ]}
+                  >
                     <Text variant="body">
                       {insp.timestamp.toLocaleDateString()} • Score {insp.score}
                       {insp.maintenanceNeeded ? " • maintenance" : ""}
+                      {insp.photos && insp.photos.length > 0
+                        ? ` • ${insp.photos.length} photo${insp.photos.length !== 1 ? "s" : ""}`
+                        : ""}
                     </Text>
                     {insp.description && (
                       <Text variant="bodySmall" color="neutral">
                         {insp.description}
                       </Text>
                     )}
-                  </View>
+                    <Text variant="bodySmall" color="primary" style={{ marginTop: spacing.xs }}>
+                      Tap to view details
+                    </Text>
+                  </Pressable>
                 ))}
             </View>
 
@@ -402,6 +433,23 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           />
         )}
       </Modal>
+
+      {/* Inspection Detail Modal */}
+      <InspectionDetail
+        inspection={selectedInspection}
+        visible={!!selectedInspection}
+        onClose={() => setSelectedInspection(null)}
+      />
+
+      {/* All Inspections Modal */}
+      {showAllInspections && (
+        <AllInspections
+          inspections={allInspections.filter((i) => i.assetId === showAllInspections)}
+          visible={!!showAllInspections}
+          onClose={() => setShowAllInspections(null)}
+          onInspectionTap={setSelectedInspection}
+        />
+      )}
     </ScrollView>
   );
 }

@@ -40,7 +40,7 @@ interface FormState {
   showDatePicker?: boolean;
   updateAsset: boolean;
   newAssetCondition?: AssetCondition;
-  issueType: string; // potholes | cracks | drainage | other
+  issueType: string; // none | potholes | cracks | drainage | other
   priority: string; // low | medium | high
   photos: string[];
   inspectionDate: Date | null;
@@ -56,7 +56,7 @@ const initialState: FormState = {
   showDatePicker: false,
   updateAsset: false,
   newAssetCondition: undefined,
-  issueType: "potholes",
+  issueType: "none",
   priority: "medium",
   photos: [],
   inspectionDate: null,
@@ -254,6 +254,7 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
               value={form.issueType}
               onChange={(v) => handleChange("issueType", String(v))}
               options={[
+                { value: "none", label: "None" },
                 { value: "potholes", label: "Potholes" },
                 { value: "cracks", label: "Cracks" },
                 { value: "drainage", label: "Drainage" },
