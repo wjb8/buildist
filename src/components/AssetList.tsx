@@ -324,7 +324,12 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               </View>
             </View>
 
-            <View row style={[layoutStyles.mt2]}>
+            <View
+              style={[
+                layoutStyles.mt2,
+                { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+              ]}
+            >
               <Button
                 variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
                 onPress={() =>
@@ -339,7 +344,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               <Button
                 variant="secondary"
                 size="small"
-                style={{ marginLeft: spacing.sm }}
                 onPress={() => setEditingRoadId(road._id.toHexString())}
               >
                 Edit
@@ -347,7 +351,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               <Button
                 variant="secondary"
                 size="small"
-                style={{ marginLeft: spacing.sm }}
                 onPress={() => setShowAllInspections(road._id.toHexString())}
               >
                 View All
@@ -355,7 +358,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               <Button
                 variant="secondary"
                 size="small"
-                style={{ marginLeft: spacing.sm }}
                 onPress={() => {
                   const assetId = road._id.toHexString();
                   setShowQRCodes((prev) => {
@@ -369,7 +371,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                   });
                 }}
               >
-                <FontAwesome name="qrcode" size={16} color={colors.text.primary} />
+                <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
               </Button>
             </View>
 

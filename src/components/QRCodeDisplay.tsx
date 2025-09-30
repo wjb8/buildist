@@ -1,6 +1,7 @@
 import { Alert, Platform, StyleSheet } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useCallback, useRef, useState } from "react";
+import { FontAwesome } from "@expo/vector-icons";
 import { View as StyledView } from "./View";
 import { Text as StyledText } from "./Text";
 import { Button as StyledButton } from "./Button";
@@ -92,7 +93,14 @@ export default function QRCodeDisplay({ qrTagId, assetName, size = 200 }: QRCode
         disabled={saving}
         style={[layoutStyles.mt2]}
       >
-        {saving ? "Saving..." : "Save QR to Photos"}
+        {saving ? (
+          "Saving..."
+        ) : (
+          <>
+            <FontAwesome name="download" size={16} color="white" />
+            Save QR to Photos
+          </>
+        )}
       </StyledButton>
     </StyledView>
   );
