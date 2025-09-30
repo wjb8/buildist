@@ -25,18 +25,9 @@ const realmConfig: Realm.Configuration = {
             if (oldObj?.condition) newObj.condition = oldObj.condition;
         }
       }
-    } catch {}
-
-    // Initialize new Inspection fields (issueType, priority, photos)
-    try {
-      const inspections = newRealm.objects("Inspection");
-      for (let i = 0; i < inspections.length; i++) {
-        const insp = inspections[i] as any;
-        if (!Array.isArray(insp.photos)) insp.photos = [];
-        if (insp.priority == null) insp.priority = "medium";
-        // issueType is optional; leave undefined if not set
-      }
-    } catch {}
+    } catch (error) {
+      console.error("Road condition migration failed:", error);
+    }
   },
 };
 

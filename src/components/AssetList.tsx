@@ -371,7 +371,9 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                   });
                 }}
               >
-                <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                <View row center style={{ gap: spacing.xs }}>
+                  <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                </View>
               </Button>
             </View>
 
