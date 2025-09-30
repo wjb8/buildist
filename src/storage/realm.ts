@@ -4,36 +4,12 @@ import { Inspection } from "./models/Inspection";
 
 const realmConfig: Realm.Configuration = {
   schema: [Road, Inspection],
-  schemaVersion: 2,
-  onMigration: (oldRealm, newRealm) => {
-    // Map old 5-level road conditions to 3-level if present
-    try {
-      const oldRoads = oldRealm.objects("Road");
-      const newRoads = newRealm.objects("Road");
-      for (let i = 0; i < newRoads.length; i++) {
-        const oldObj = oldRoads[i] as any;
-        const newObj = newRoads[i] as any;
-        switch (oldObj?.condition) {
-          case "excellent":
-            newObj.condition = "good";
-            break;
-          case "critical":
-            newObj.condition = "poor";
-            break;
-          default:
-            // good/fair/poor remain as-is or assign if undefined
-            if (oldObj?.condition) newObj.condition = oldObj.condition;
-        }
-      }
-    } catch (error) {
-      console.error("Road condition migration failed:", error);
-    }
-  },
+  schemaVersion: 3,
 };
 
 // Export schema for RealmProvider
 export const schema = [Road, Inspection];
-export const schemaVersion = 2;
+export const schemaVersion = 3;
 
 // init and get realm instance
 export const initRealm = async (): Promise<Realm> => {
