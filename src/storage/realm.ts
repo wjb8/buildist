@@ -4,16 +4,12 @@ import { Inspection } from "./models/Inspection";
 
 const realmConfig: Realm.Configuration = {
   schema: [Road, Inspection],
-  schemaVersion: 1,
-  onMigration: (oldRealm, newRealm) => {
-    // this will run when schemaVersion is incremented
-    console.log("Realm migration running...");
-  },
+  schemaVersion: 3,
 };
 
 // Export schema for RealmProvider
 export const schema = [Road, Inspection];
-export const schemaVersion = 1;
+export const schemaVersion = 3;
 
 // init and get realm instance
 export const initRealm = async (): Promise<Realm> => {

@@ -1,4 +1,4 @@
-import { AssetType, AssetCondition, type AssetData } from "./asset";
+import { AssetType, AssetData } from "./asset";
 
 export enum RoadSurfaceType {
   ASPHALT = "asphalt",

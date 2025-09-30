@@ -12,6 +12,9 @@ export class Inspection extends Realm.Object {
       score: "int",
       timestamp: "date",
       maintenanceNeeded: "bool",
+      issueType: "string?", // e.g., potholes, cracks, drainage, other
+      priority: "string?", // low, medium, high
+      photos: "string[]", // local URIs; lists cannot be optional in Realm
       nextDue: "date?",
       createdAt: "date",
       updatedAt: "date",
@@ -26,6 +29,9 @@ export class Inspection extends Realm.Object {
   score!: number;
   timestamp!: Date;
   maintenanceNeeded!: boolean;
+  issueType?: string;
+  priority?: string;
+  photos!: string[];
   nextDue?: Date;
   createdAt!: Date;
   updatedAt!: Date;
@@ -36,13 +42,11 @@ export class Inspection extends Realm.Object {
     return new Date() > this.nextDue;
   }
 
-  get scoreCategory(): "excellent" | "good" | "fair" | "poor" | "critical" {
-    // 1–5 scale
-    if (this.score >= 5) return "excellent";
+  get scoreCategory(): "good" | "fair" | "poor" {
+    // Map 1–5 to 3-level buckets
     if (this.score >= 4) return "good";
     if (this.score >= 3) return "fair";
-    if (this.score >= 2) return "poor";
-    return "critical";
+    return "poor";
   }
 
   get daysUntilDue(): number | null {

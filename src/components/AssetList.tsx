@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { ScrollView, RefreshControl, Modal } from "react-native";
+import { ScrollView, RefreshControl, Modal, Pressable } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
+import { FontAwesome } from "@expo/vector-icons";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -10,6 +11,8 @@ import { Divider } from "./Divider";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
 import EditAssetForm from "./EditAssetForm";
+import InspectionDetail from "./InspectionDetail";
+import AllInspections from "./AllInspections";
 import { layoutStyles, colors, spacing } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
@@ -33,22 +36,20 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const roads = useQuery(Road);
   const allInspections = useQuery(Inspection);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
-  const [showQRCodes, setShowQRCodes] = useState(false);
+  const [showQRCodes, setShowQRCodes] = useState<Set<string>>(new Set());
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<"attention" | "all">("attention");
   const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
+  const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+  const [showAllInspections, setShowAllInspections] = useState<string | null>(null);
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
-      case AssetCondition.EXCELLENT:
-        return "success";
       case AssetCondition.GOOD:
         return "success";
       case AssetCondition.FAIR:
         return "warning";
       case AssetCondition.POOR:
-        return "error";
-      case AssetCondition.CRITICAL:
         return "error";
       default:
         return "secondary";
@@ -174,14 +175,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           >
             All
           </Button>
-          <Button
-            variant="secondary"
-            onPress={() => setShowQRCodes(!showQRCodes)}
-            size="small"
-            style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
-          >
-            {showQRCodes ? "Hide QR" : "Show QR"}
-          </Button>
         </View>
 
         {mode === "attention" && attentionRoads.length === 0 && (
@@ -305,7 +298,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               </View>
             )}
 
-            {showQRCodes && road.qrTagId && (
+            {showQRCodes.has(road._id.toHexString()) && road.qrTagId && (
               <View style={[layoutStyles.mb3]}>
                 <Divider style={[layoutStyles.mb2]} />
                 <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
@@ -331,7 +324,12 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               </View>
             </View>
 
-            <View row style={[layoutStyles.mt2]}>
+            <View
+              style={[
+                layoutStyles.mt2,
+                { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+              ]}
+            >
               <Button
                 variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
                 onPress={() =>
@@ -346,10 +344,36 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               <Button
                 variant="secondary"
                 size="small"
-                style={{ marginLeft: spacing.sm }}
                 onPress={() => setEditingRoadId(road._id.toHexString())}
               >
                 Edit
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onPress={() => setShowAllInspections(road._id.toHexString())}
+              >
+                View All
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onPress={() => {
+                  const assetId = road._id.toHexString();
+                  setShowQRCodes((prev) => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(assetId)) {
+                      newSet.delete(assetId);
+                    } else {
+                      newSet.add(assetId);
+                    }
+                    return newSet;
+                  });
+                }}
+              >
+                <View row center style={{ gap: spacing.xs }}>
+                  <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                </View>
               </Button>
             </View>
 
@@ -370,17 +394,36 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                 .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
                 .slice(0, 3)
                 .map((insp) => (
-                  <View key={insp._id.toHexString()} style={[layoutStyles.mt1]}>
+                  <Pressable
+                    key={insp._id.toHexString()}
+                    onPress={() => setSelectedInspection(insp)}
+                    style={[
+                      layoutStyles.mt1,
+                      {
+                        padding: spacing.md,
+                        backgroundColor: colors.neutral.lightest,
+                        borderRadius: spacing.md,
+                        borderWidth: 1,
+                        borderColor: colors.border.light,
+                      },
+                    ]}
+                  >
                     <Text variant="body">
                       {insp.timestamp.toLocaleDateString()} • Score {insp.score}
                       {insp.maintenanceNeeded ? " • maintenance" : ""}
+                      {insp.photos && insp.photos.length > 0
+                        ? ` • ${insp.photos.length} photo${insp.photos.length !== 1 ? "s" : ""}`
+                        : ""}
                     </Text>
                     {insp.description && (
                       <Text variant="bodySmall" color="neutral">
                         {insp.description}
                       </Text>
                     )}
-                  </View>
+                    <Text variant="bodySmall" color="primary" style={{ marginTop: spacing.xs }}>
+                      Tap to view details
+                    </Text>
+                  </Pressable>
                 ))}
             </View>
 
@@ -406,6 +449,23 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           />
         )}
       </Modal>
+
+      {/* Inspection Detail Modal */}
+      <InspectionDetail
+        inspection={selectedInspection}
+        visible={!!selectedInspection}
+        onClose={() => setSelectedInspection(null)}
+      />
+
+      {/* All Inspections Modal */}
+      {showAllInspections && (
+        <AllInspections
+          inspections={allInspections.filter((i) => i.assetId === showAllInspections)}
+          visible={!!showAllInspections}
+          onClose={() => setShowAllInspections(null)}
+          onInspectionTap={setSelectedInspection}
+        />
+      )}
     </ScrollView>
   );
 }

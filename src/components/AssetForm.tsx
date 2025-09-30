@@ -221,11 +221,9 @@ export default function AssetForm({ onAssetCreated }: AssetFormProps) {
           {renderEnumSelect(
             "condition",
             {
-              [AssetCondition.EXCELLENT]: "Excellent",
               [AssetCondition.GOOD]: "Good",
               [AssetCondition.FAIR]: "Fair",
               [AssetCondition.POOR]: "Poor",
-              [AssetCondition.CRITICAL]: "Critical",
             },
             "Condition *",
             true

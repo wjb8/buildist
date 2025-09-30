@@ -8,11 +8,9 @@ export enum AssetType {
 }
 
 export enum AssetCondition {
-  EXCELLENT = "excellent",
   GOOD = "good",
   FAIR = "fair",
   POOR = "poor",
-  CRITICAL = "critical",
 }
 
 export interface AssetData {
