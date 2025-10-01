@@ -191,7 +191,7 @@ export const layoutTokens = {
   },
 
   input: {
-    height: 48,
+    height: 40,
   },
 };
 

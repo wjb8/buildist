@@ -14,6 +14,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { MaterialIcons } from "@expo/vector-icons";
 import Realm from "realm";
 import { getRealm } from "@/storage/realm";
 import { View } from "./View";
@@ -38,8 +39,6 @@ interface FormState {
   maintenanceNeeded: boolean;
   nextDue: Date | null;
   showDatePicker?: boolean;
-  updateAsset: boolean;
-  newAssetCondition?: AssetCondition;
   issueType: string | null; // potholes | cracks | drainage | other | null
   priority: string | null; // low | medium | high | null
   photos: string[];
@@ -54,12 +53,10 @@ const initialState: FormState = {
   maintenanceNeeded: false,
   nextDue: null,
   showDatePicker: false,
-  updateAsset: false,
-  newAssetCondition: undefined,
   issueType: null,
   priority: null,
   photos: [],
-  inspectionDate: null,
+  inspectionDate: new Date(), // Default to current date
   showInspectionDatePicker: false,
 };
 
@@ -112,6 +109,15 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
       const now = new Date();
       const scoreNum = parseInt(form.score, 10);
 
+      // Determine asset condition based on inspection score
+      const getConditionFromScore = (score: number): AssetCondition => {
+        if (score <= 2) return AssetCondition.POOR;
+        if (score <= 3) return AssetCondition.FAIR;
+        return AssetCondition.GOOD;
+      };
+
+      const newCondition = getConditionFromScore(scoreNum);
+
       realm.write(() => {
         realm.create("Inspection", {
           _id: new Realm.BSON.ObjectId(),
@@ -130,13 +136,12 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           synced: false,
         });
 
-        if (form.updateAsset && form.newAssetCondition) {
-          const road = realm.objectForPrimaryKey<Road>("Road", new Realm.BSON.ObjectId(assetId));
-          if (road) {
-            road.condition = form.newAssetCondition;
-            road.updatedAt = now;
-            road.synced = false;
-          }
+        // Update asset condition based on inspection score
+        const road = realm.objectForPrimaryKey<Road>("Road", new Realm.BSON.ObjectId(assetId));
+        if (road && road.condition !== newCondition) {
+          road.condition = newCondition;
+          road.updatedAt = now;
+          road.synced = false;
         }
       });
 
@@ -283,20 +288,27 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           </View>
         </View>
 
-        {/* Inspection Date (override) */}
-        <View style={[layoutStyles.mb3]}>
-          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-            Inspection Date (optional)
+        {/* Inspection Date */}
+        <View style={layoutStyles.mb3}>
+          <Text variant="bodySmall" style={layoutStyles.mb1}>
+            Inspection Date
           </Text>
           <Pressable
             onPress={() => handleChange("showInspectionDatePicker", true)}
-            style={[inputStyles.base]}
+            style={[
+              inputStyles.base,
+              {
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              },
+            ]}
           >
-            <Text variant="body">
-              {form.inspectionDate
-                ? form.inspectionDate.toISOString().slice(0, 10)
-                : "Use today's date"}
+            <Text variant="body" style={{ flex: 1, textAlign: "center" }}>
+              {form.inspectionDate?.toISOString().slice(0, 10) ||
+                new Date().toISOString().slice(0, 10)}
             </Text>
+            <MaterialIcons name="event" size={20} color={colors.text.secondary} />
           </Pressable>
           {form.showInspectionDatePicker && (
             <DateTimePicker
@@ -321,12 +333,50 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
               </Button>
             </View>
           )}
+
+          <View style={[layoutStyles.mt3]}>
+            <Text variant="bodySmall" style={[layoutStyles.mb1]}>
+              Next Due (optional)
+            </Text>
+            <Pressable
+              onPress={() => handleChange("showDatePicker", true)}
+              style={[
+                inputStyles.base,
+                {
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                },
+              ]}
+            >
+              <Text variant="body" style={{ flex: 1, textAlign: "center" }}>
+                {form.nextDue ? form.nextDue.toISOString().slice(0, 10) : "Select date"}
+              </Text>
+              <MaterialIcons name="event" size={20} color={colors.text.secondary} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View
+          row
+          style={[layoutStyles.mb3, layoutStyles.rowCenter, { justifyContent: "space-between" }]}
+        >
+          <Text variant="body">Maintenance Needed</Text>
+          <Switch
+            value={form.maintenanceNeeded}
+            onValueChange={(v) => {
+              setManualEditedMaintenance(true);
+              setForm((prev) => ({ ...prev, maintenanceNeeded: v }));
+            }}
+            thumbColor={form.maintenanceNeeded ? colors.success.main : colors.border.medium}
+            trackColor={{ true: colors.success.light, false: colors.border.medium }}
+          />
         </View>
 
         {/* Photos */}
         <View style={[layoutStyles.mb3]}>
           <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-            Photos (optional)
+            Photos
           </Text>
           <View row style={[layoutStyles.rowSpaceBetween]}>
             <Button variant="secondary" size="small" onPress={handleAddPhoto}>
@@ -346,67 +396,6 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
         </View>
 
         <View style={[layoutStyles.mb3]}>
-          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-            Update Asset (optional)
-          </Text>
-          <View
-            row
-            style={[layoutStyles.mb2, layoutStyles.rowCenter, { justifyContent: "space-between" }]}
-          >
-            <Text variant="body">Update condition</Text>
-            <Switch
-              value={form.updateAsset}
-              onValueChange={(v) => setForm((prev) => ({ ...prev, updateAsset: v }))}
-              thumbColor={form.updateAsset ? colors.success.main : colors.border.medium}
-              trackColor={{ true: colors.success.light, false: colors.border.medium }}
-            />
-          </View>
-
-          {form.updateAsset && (
-            <Select
-              label="New Asset Condition"
-              value={form.newAssetCondition || AssetCondition.GOOD}
-              onChange={(v) =>
-                setForm((prev) => ({ ...prev, newAssetCondition: v as AssetCondition }))
-              }
-              options={[
-                { value: AssetCondition.GOOD, label: "Good" },
-                { value: AssetCondition.FAIR, label: "Fair" },
-                { value: AssetCondition.POOR, label: "Poor" },
-              ]}
-            />
-          )}
-        </View>
-
-        <View
-          row
-          style={[layoutStyles.mb3, layoutStyles.rowCenter, { justifyContent: "space-between" }]}
-        >
-          <Text variant="body">Maintenance Needed</Text>
-          <Switch
-            value={form.maintenanceNeeded}
-            onValueChange={(v) => {
-              setManualEditedMaintenance(true);
-              setForm((prev) => ({ ...prev, maintenanceNeeded: v }));
-            }}
-            thumbColor={form.maintenanceNeeded ? colors.success.main : colors.border.medium}
-            trackColor={{ true: colors.success.light, false: colors.border.medium }}
-          />
-        </View>
-
-        <View style={[layoutStyles.mb3]}>
-          <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-            Next Due (optional)
-          </Text>
-          <Pressable
-            onPress={() => handleChange("showDatePicker", true)}
-            style={[inputStyles.base]}
-          >
-            <Text variant="body">
-              {form.nextDue ? form.nextDue.toISOString().slice(0, 10) : "Select date"}
-            </Text>
-          </Pressable>
-
           {form.showDatePicker && (
             <DateTimePicker
               value={form.nextDue ?? new Date()}

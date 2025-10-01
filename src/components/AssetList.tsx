@@ -8,6 +8,8 @@ import { Button } from "./Button";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Divider } from "./Divider";
+import { Input } from "./Input";
+import Select from "./Select";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
 import EditAssetForm from "./EditAssetForm";
@@ -42,6 +44,8 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
   const [showAllInspections, setShowAllInspections] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [assetTypeFilter, setAssetTypeFilter] = useState("all");
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
@@ -130,7 +134,35 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     [computedRoads]
   );
 
-  const displayed = mode === "attention" ? attentionRoads : allRoadsSorted;
+  // Apply search and asset type filtering
+  const filteredRoads = useMemo(() => {
+    let filtered = mode === "attention" ? attentionRoads : allRoadsSorted;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((item) => {
+        const road = item.road;
+        return (
+          road.name.toLowerCase().includes(query) ||
+          (road.location && road.location.toLowerCase().includes(query)) ||
+          (road.qrTagId && road.qrTagId.toLowerCase().includes(query))
+        );
+      });
+    }
+
+    // Apply asset type filter (currently only "all" and "roads" since we only have Roads)
+    if (assetTypeFilter !== "all") {
+      filtered = filtered.filter((item) => {
+        // For now, all assets are Roads, but this will be useful when we add other asset types
+        return assetTypeFilter === "roads";
+      });
+    }
+
+    return filtered;
+  }, [mode, attentionRoads, allRoadsSorted, searchQuery, assetTypeFilter]);
+
+  const displayed = filteredRoads;
 
   if (roads.length === 0) {
     return (
@@ -154,10 +186,33 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
         <View style={[layoutStyles.mb2]}>
           <Text variant="h3">
             {mode === "attention"
-              ? `Needs Attention (${attentionRoads.length})`
-              : `All Assets (${roads.length})`}
+              ? `Needs Attention (${filteredRoads.length})`
+              : `All Assets (${filteredRoads.length})`}
           </Text>
         </View>
+
+        {/* Search and Filter Row */}
+        <View style={[layoutStyles.mb3, { flexDirection: "row", gap: spacing.sm }]}>
+          <View style={{ flex: 1 }}>
+            <Input
+              placeholder="Search assets..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={{ marginBottom: 0 }}
+            />
+          </View>
+          <View style={{ width: 120 }}>
+            <Select
+              value={assetTypeFilter}
+              onChange={setAssetTypeFilter}
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "roads", label: "Roads" },
+              ]}
+            />
+          </View>
+        </View>
+
         <View style={[layoutStyles.flexRow, { flexWrap: "wrap" }, layoutStyles.mb4]}>
           <Button
             variant={mode === "attention" ? "primary" : "secondary"}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ScrollView,
   RefreshControl,
@@ -16,6 +16,7 @@ import QRScanner from "./QRScanner";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 import { Road } from "@/storage/models/assets/Road";
 import { QRService } from "@/services/QRService";
+import { forceReseedDemoData } from "@/utils/demoData";
 
 interface MainPageProps {
   onLogout: () => void;
@@ -25,6 +26,11 @@ export default function MainPage({ onLogout }: MainPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Seed demo data when component mounts
+  useEffect(() => {
+    forceReseedDemoData();
+  }, []);
 
   const handleAssetCreated = () => {
     setShowForm(false);

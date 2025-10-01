@@ -402,10 +402,10 @@ export const inputStyles = StyleSheet.create({
     borderColor: colors.border.medium,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     fontSize: typography.fontSize.base,
     color: colors.text.primary,
-    minHeight: 48,
+    minHeight: 40,
   },
 
   focused: {

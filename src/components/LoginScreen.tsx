@@ -56,7 +56,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       center
       style={[layoutStyles.flex, layoutStyles.p4, { backgroundColor: colors.background.primary }]}
     >
-      <View style={[layoutStyles.mb6, { alignItems: "center" }]}>
+      <View style={[layoutStyles.mb5, { alignItems: "center" }]}>
         <Text variant="h1" style={[layoutStyles.mb2]}>
           Buildist
         </Text>
@@ -68,7 +68,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </Text>
       </View>
 
-      <View style={[layoutStyles.mb6, { width: "100%", maxWidth: 300 }]}>
+      <View style={[layoutStyles.mb5, { width: "100%", maxWidth: 300 }]}>
         <Input
           label="Username"
           value={username}

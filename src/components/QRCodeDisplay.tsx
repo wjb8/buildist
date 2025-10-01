@@ -93,14 +93,7 @@ export default function QRCodeDisplay({ qrTagId, assetName, size = 200 }: QRCode
         disabled={saving}
         style={[layoutStyles.mt2]}
       >
-        {saving ? (
-          "Saving..."
-        ) : (
-          <>
-            <FontAwesome name="download" size={16} color="white" />
-            Save QR to Photos
-          </>
-        )}
+        {saving ? "Saving..." : <FontAwesome name="download" size={16} color="white" />}
       </StyledButton>
     </StyledView>
   );
