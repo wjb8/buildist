@@ -12,12 +12,14 @@ import { Input } from "./Input";
 import Select from "./Select";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
-import EditAssetForm from "./EditAssetForm";
+import EditRoadForm from "./EditRoadForm";
+import EditVehicleForm from "./EditVehicleForm";
 import InspectionDetail from "./InspectionDetail";
 import AllInspections from "./AllInspections";
 import { layoutStyles, colors, spacing } from "@/styles";
 import { AssetCondition, TrafficVolume } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
+import { Vehicle } from "@/storage/models/assets/Vehicle";
 import { Inspection } from "@/storage/models/Inspection";
 import Realm from "realm";
 import {
@@ -36,6 +38,7 @@ interface AssetListProps {
 export default function AssetList({ onRefresh, refreshing, focusQrTagId }: AssetListProps) {
   const realm = useRealm();
   const roads = useQuery(Road);
+  const vehicles = useQuery(Vehicle);
   const allInspections = useQuery(Inspection);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState<Set<string>>(new Set());
@@ -46,6 +49,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   const [showAllInspections, setShowAllInspections] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [assetTypeFilter, setAssetTypeFilter] = useState("all");
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
@@ -82,8 +86,9 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   // When focusQrTagId is provided, expand and highlight the matching asset
   if (focusQrTagId && !expandedAssetId) {
     const match = roads.filtered("qrTagId == $0", focusQrTagId)[0] as Road | undefined;
-    if (match) {
-      const idHex = (match._id as any).toHexString();
+    const vmatch = vehicles.filtered("qrTagId == $0", focusQrTagId)[0] as Vehicle | undefined;
+    if (match || vmatch) {
+      const idHex = ((match || vmatch)!._id as any).toHexString();
       setExpandedAssetId(idHex);
       setHighlightedAssetId(idHex);
       setTimeout(() => setHighlightedAssetId(null), 2000);
@@ -134,6 +139,21 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     [computedRoads]
   );
 
+  const vehicleCards = useMemo(() => {
+    return vehicles.map((veh) => {
+      const idHex = veh._id.toHexString();
+      const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
+      const flags = getAttentionFlags(veh as any, latestInspection, defaultAttentionConfig);
+      const attentionScore = computeAttentionScore(
+        veh as any,
+        flags,
+        latestInspection,
+        defaultAttentionConfig
+      );
+      return { veh, latestInspection, flags, attentionScore };
+    });
+  }, [vehicles, latestInspectionByAssetId]);
+
   // Apply search and asset type filtering
   const filteredRoads = useMemo(() => {
     let filtered = mode === "attention" ? attentionRoads : allRoadsSorted;
@@ -151,18 +171,33 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
       });
     }
 
-    // Apply asset type filter (currently only "all" and "roads" since we only have Roads)
-    if (assetTypeFilter !== "all") {
-      filtered = filtered.filter((item) => {
-        // For now, all assets are Roads, but this will be useful when we add other asset types
-        return assetTypeFilter === "roads";
-      });
-    }
-
     return filtered;
   }, [mode, attentionRoads, allRoadsSorted, searchQuery, assetTypeFilter]);
 
-  const displayed = filteredRoads;
+  const filteredVehicles = useMemo(() => {
+    let list = vehicleCards;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        ({ veh }) =>
+          veh.name.toLowerCase().includes(q) ||
+          (veh.location && veh.location.toLowerCase().includes(q)) ||
+          (veh.qrTagId && veh.qrTagId.toLowerCase().includes(q)) ||
+          veh.identifier.toLowerCase().includes(q)
+      );
+    }
+
+    return list.sort((a, b) => b.attentionScore - a.attentionScore);
+  }, [vehicleCards, searchQuery]);
+
+  const displayed = useMemo(() => {
+    if (assetTypeFilter === "roads") return filteredRoads;
+    if (assetTypeFilter === "vehicles") return filteredVehicles;
+    return [
+      ...filteredRoads.map((r) => ({ type: "road" as const, data: r })),
+      ...filteredVehicles.map((v) => ({ type: "vehicle" as const, data: v })),
+    ];
+  }, [filteredRoads, filteredVehicles, assetTypeFilter]);
 
   if (roads.length === 0) {
     return (
@@ -184,11 +219,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     >
       <View style={[layoutStyles.p4]}>
         <View style={[layoutStyles.mb2]}>
-          <Text variant="h3">
-            {mode === "attention"
-              ? `Needs Attention (${filteredRoads.length})`
-              : `All Assets (${filteredRoads.length})`}
-          </Text>
+          <Text variant="h3">{mode === "attention" ? "Needs Attention" : "All Assets"}</Text>
         </View>
 
         {/* Search and Filter Row */}
@@ -208,6 +239,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               options={[
                 { value: "all", label: "All Types" },
                 { value: "roads", label: "Roads" },
+                { value: "vehicles", label: "Vehicles" },
               ]}
             />
           </View>
@@ -243,248 +275,595 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           </View>
         )}
 
-        {displayed.map(({ road, latestInspection, flags }, index) => (
-          <Card
-            key={road._id.toString()}
-            style={
-              highlightedAssetId === road._id.toHexString()
-                ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
-                : [layoutStyles.mb3]
-            }
-          >
-            <View row style={[layoutStyles.mb2]}>
-              <View style={[layoutStyles.flex]}>
-                <Text variant="h4" style={[layoutStyles.mb1]}>
-                  {road.name}
-                </Text>
-                {road.location && (
-                  <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
-                    📍 {road.location}
-                  </Text>
-                )}
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Badge variant={getConditionColor(road.condition)}>{road.condition}</Badge>
-              </View>
-            </View>
-
-            {/* Attention reasons */}
-            {(() => {
-              const reasons = getAttentionReasonBadges(flags);
-              if (reasons.length === 0) return null;
-              const badgeVariant = (reason: string) => {
-                if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
-                if (reason === "Due soon" || reason === "Poor condition") return "warning" as const;
-                return "secondary" as const;
-              };
+        {assetTypeFilter !== "vehicles" &&
+          displayed
+            .filter((x: any) => (assetTypeFilter === "roads" ? true : x.type === "road"))
+            .map((wrap: any, index: number) => {
+              const { road, latestInspection, flags } = wrap.type ? wrap.data : wrap;
               return (
-                <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
-                  {reasons.map((r) => (
-                    <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
-                      <Badge variant={badgeVariant(r)} size="small">
-                        {r}
+                <Card
+                  key={road._id.toString()}
+                  style={
+                    highlightedAssetId === road._id.toHexString()
+                      ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
+                      : [layoutStyles.mb3]
+                  }
+                >
+                  <View row style={[layoutStyles.mb2]}>
+                    <View style={[layoutStyles.flex]}>
+                      <Text variant="h4" style={[layoutStyles.mb1]}>
+                        {road.name}
+                      </Text>
+                      {road.location && (
+                        <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
+                          📍 {road.location}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Badge variant={getConditionColor(road.condition)}>
+                        {`Condition: ${
+                          road.condition === AssetCondition.GOOD
+                            ? "Good"
+                            : road.condition === AssetCondition.FAIR
+                            ? "Fair"
+                            : "Poor"
+                        }`}
                       </Badge>
                     </View>
-                  ))}
-                </View>
-              );
-            })()}
-
-            <View row style={[layoutStyles.mb2]}>
-              <View style={[layoutStyles.flex]}>
-                <Text variant="bodySmall" color="neutral">
-                  Surface Type
-                </Text>
-                <Text variant="body">{road.surfaceType}</Text>
-              </View>
-              <View style={[layoutStyles.flex]}>
-                <Text variant="bodySmall" color="neutral">
-                  Traffic Volume
-                </Text>
-                <Badge variant={getTrafficVolumeColor(road.trafficVolume)} size="small">
-                  {road.trafficVolume}
-                </Badge>
-              </View>
-            </View>
-
-            {(road.length || road.width || road.lanes || road.speedLimit) && (
-              <View row style={[layoutStyles.mb2]}>
-                {road.length && (
-                  <View style={[layoutStyles.flex]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Length
-                    </Text>
-                    <Text variant="body">{road.length}m</Text>
                   </View>
-                )}
-                {road.width && (
-                  <View style={[layoutStyles.flex]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Width
-                    </Text>
-                    <Text variant="body">{road.width}m</Text>
+
+                  {/* Attention reasons */}
+                  {(() => {
+                    const reasons = getAttentionReasonBadges(flags);
+                    if (reasons.length === 0) return null;
+                    const badgeVariant = (reason: string) => {
+                      if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
+                      if (reason === "Condition: Poor") return "error" as const;
+                      if (reason === "Due soon") return "warning" as const;
+                      return "secondary" as const;
+                    };
+                    return (
+                      <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
+                        {reasons.map((r) => (
+                          <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
+                            <Badge variant={badgeVariant(r)} size="small">
+                              {r}
+                            </Badge>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })()}
+
+                  <View row style={[layoutStyles.mb2]}>
+                    <View style={[layoutStyles.flex]}>
+                      <Text variant="bodySmall" color="neutral">
+                        Surface Type
+                      </Text>
+                      <Text variant="body">{road.surfaceType}</Text>
+                    </View>
+                    <View style={[layoutStyles.flex]}>
+                      <Text variant="bodySmall" color="neutral">
+                        Traffic Volume
+                      </Text>
+                      <Badge variant={getTrafficVolumeColor(road.trafficVolume)} size="small">
+                        {road.trafficVolume}
+                      </Badge>
+                    </View>
                   </View>
-                )}
-                {road.lanes && (
-                  <View style={[layoutStyles.flex]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Lanes
-                    </Text>
-                    <Text variant="body">{road.lanes}</Text>
+
+                  {(road.length || road.width || road.lanes || road.speedLimit) && (
+                    <View row style={[layoutStyles.mb2]}>
+                      {road.length && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Length
+                          </Text>
+                          <Text variant="body">{road.length}m</Text>
+                        </View>
+                      )}
+                      {road.width && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Width
+                          </Text>
+                          <Text variant="body">{road.width}m</Text>
+                        </View>
+                      )}
+                      {road.lanes && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Lanes
+                          </Text>
+                          <Text variant="body">{road.lanes}</Text>
+                        </View>
+                      )}
+                      {road.speedLimit && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Speed Limit
+                          </Text>
+                          <Text variant="body">{road.speedLimit} km/h</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {road.notes && (
+                    <View style={[layoutStyles.mb2]}>
+                      <Text variant="bodySmall" color="neutral">
+                        Notes
+                      </Text>
+                      <Text variant="body">{road.notes}</Text>
+                    </View>
+                  )}
+
+                  {showQRCodes.has(road._id.toHexString()) && road.qrTagId && (
+                    <View style={[layoutStyles.mb3]}>
+                      <Divider style={[layoutStyles.mb2]} />
+                      <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
+                    </View>
+                  )}
+
+                  <Divider style={[layoutStyles.my2]} />
+
+                  <View spaceBetween style={[layoutStyles.mb2]}>
+                    <View>
+                      <Text variant="bodySmall" color="neutral">
+                        Created {formatDate(road.createdAt)}
+                      </Text>
+                    </View>
                   </View>
-                )}
-                {road.speedLimit && (
-                  <View style={[layoutStyles.flex]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Speed Limit
-                    </Text>
-                    <Text variant="body">{road.speedLimit} km/h</Text>
-                  </View>
-                )}
-              </View>
-            )}
 
-            {road.notes && (
-              <View style={[layoutStyles.mb2]}>
-                <Text variant="bodySmall" color="neutral">
-                  Notes
-                </Text>
-                <Text variant="body">{road.notes}</Text>
-              </View>
-            )}
-
-            {showQRCodes.has(road._id.toHexString()) && road.qrTagId && (
-              <View style={[layoutStyles.mb3]}>
-                <Divider style={[layoutStyles.mb2]} />
-                <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
-              </View>
-            )}
-
-            <Divider style={[layoutStyles.my2]} />
-
-            <View spaceBetween style={[layoutStyles.mb2]}>
-              <View>
-                <Text variant="bodySmall" color="neutral">
-                  Created
-                </Text>
-                <Text variant="bodySmall">{formatDate(road.createdAt)}</Text>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text variant="bodySmall" color="neutral">
-                  QR Tag
-                </Text>
-                <Text variant="bodySmall" color="neutral">
-                  {road.qrTagId || "Auto-generated"}
-                </Text>
-              </View>
-            </View>
-
-            <View
-              style={[
-                layoutStyles.mt2,
-                { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-              ]}
-            >
-              <Button
-                variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
-                onPress={() =>
-                  setExpandedAssetId(
-                    expandedAssetId === road._id.toHexString() ? null : road._id.toHexString()
-                  )
-                }
-                size="small"
-              >
-                {expandedAssetId === road._id.toHexString() ? "Hide Inspection" : "Add Inspection"}
-              </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                onPress={() => setEditingRoadId(road._id.toHexString())}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                onPress={() => setShowAllInspections(road._id.toHexString())}
-              >
-                View All
-              </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                onPress={() => {
-                  const assetId = road._id.toHexString();
-                  setShowQRCodes((prev) => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(assetId)) {
-                      newSet.delete(assetId);
-                    } else {
-                      newSet.add(assetId);
-                    }
-                    return newSet;
-                  });
-                }}
-              >
-                <View row center style={{ gap: spacing.xs }}>
-                  <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
-                </View>
-              </Button>
-            </View>
-
-            {expandedAssetId === road._id.toHexString() && (
-              <NewInspectionForm
-                assetId={road._id.toHexString()}
-                onCreated={() => setExpandedAssetId(null)}
-              />
-            )}
-
-            {/* Inspections list */}
-            <View style={[layoutStyles.mt2]}>
-              <Text variant="bodySmall" color="neutral">
-                Recent Inspections
-              </Text>
-              {[...allInspections]
-                .filter((i) => i.assetId === road._id.toHexString())
-                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                .slice(0, 3)
-                .map((insp) => (
-                  <Pressable
-                    key={insp._id.toHexString()}
-                    onPress={() => setSelectedInspection(insp)}
+                  <View
                     style={[
-                      layoutStyles.mt1,
-                      {
-                        padding: spacing.md,
-                        backgroundColor: colors.neutral.lightest,
-                        borderRadius: spacing.md,
-                        borderWidth: 1,
-                        borderColor: colors.border.light,
-                      },
+                      layoutStyles.mt2,
+                      { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
                     ]}
                   >
-                    <Text variant="body">
-                      {insp.timestamp.toLocaleDateString()} • Score {insp.score}
-                      {insp.maintenanceNeeded ? " • maintenance" : ""}
-                      {insp.photos && insp.photos.length > 0
-                        ? ` • ${insp.photos.length} photo${insp.photos.length !== 1 ? "s" : ""}`
-                        : ""}
-                    </Text>
-                    {insp.description && (
-                      <Text variant="bodySmall" color="neutral">
-                        {insp.description}
-                      </Text>
-                    )}
-                    <Text variant="bodySmall" color="primary" style={{ marginTop: spacing.xs }}>
-                      Tap to view details
-                    </Text>
-                  </Pressable>
-                ))}
-            </View>
+                    <Button
+                      variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
+                      onPress={() =>
+                        setExpandedAssetId(
+                          expandedAssetId === road._id.toHexString() ? null : road._id.toHexString()
+                        )
+                      }
+                      size="small"
+                    >
+                      {expandedAssetId === road._id.toHexString()
+                        ? "Hide Inspection"
+                        : "Add Inspection"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => setEditingRoadId(road._id.toHexString())}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => setShowAllInspections(road._id.toHexString())}
+                    >
+                      View All
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => {
+                        const assetId = road._id.toHexString();
+                        setShowQRCodes((prev) => {
+                          const newSet = new Set(prev);
+                          if (newSet.has(assetId)) {
+                            newSet.delete(assetId);
+                          } else {
+                            newSet.add(assetId);
+                          }
+                          return newSet;
+                        });
+                      }}
+                    >
+                      <View row center style={{ gap: spacing.xs }}>
+                        <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                      </View>
+                    </Button>
+                  </View>
 
-            {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
-          </Card>
-        ))}
+                  {expandedAssetId === road._id.toHexString() && (
+                    <NewInspectionForm
+                      assetId={road._id.toHexString()}
+                      onCreated={() => setExpandedAssetId(null)}
+                    />
+                  )}
+
+                  {/* Inspections list */}
+                  <View style={[layoutStyles.mt2]}>
+                    <Text variant="bodySmall" color="neutral">
+                      Recent Inspections
+                    </Text>
+                    {[...allInspections]
+                      .filter((i) => i.assetId === road._id.toHexString())
+                      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                      .slice(0, 3)
+                      .map((insp) => (
+                        <Pressable
+                          key={insp._id.toHexString()}
+                          onPress={() => setSelectedInspection(insp)}
+                          style={[
+                            layoutStyles.mt1,
+                            {
+                              padding: spacing.md,
+                              backgroundColor: colors.neutral.lightest,
+                              borderRadius: spacing.md,
+                              borderWidth: 1,
+                              borderColor: colors.border.light,
+                            },
+                          ]}
+                        >
+                          <Text variant="body">{insp.timestamp.toLocaleDateString()}</Text>
+                          <View
+                            row
+                            style={{ marginTop: spacing.xs, flexWrap: "wrap", gap: spacing.xs }}
+                          >
+                            <Badge
+                              variant={
+                                insp.score >= 4 ? "success" : insp.score >= 3 ? "warning" : "error"
+                              }
+                              size="small"
+                            >
+                              {`Condition: ${
+                                insp.score >= 4 ? "Good" : insp.score >= 3 ? "Fair" : "Poor"
+                              }`}
+                            </Badge>
+                            {insp.issueType && (
+                              <Badge
+                                variant={
+                                  insp.issueType === "potholes"
+                                    ? "error"
+                                    : insp.issueType === "cracks" || insp.issueType === "drainage"
+                                    ? "warning"
+                                    : "secondary"
+                                }
+                                size="small"
+                              >
+                                {`Issue: ${
+                                  insp.issueType === "potholes"
+                                    ? "Potholes"
+                                    : insp.issueType === "cracks"
+                                    ? "Cracks"
+                                    : insp.issueType === "drainage"
+                                    ? "Drainage"
+                                    : "Other"
+                                }`}
+                              </Badge>
+                            )}
+                            {insp.maintenanceNeeded && (
+                              <Badge variant="error" size="small">
+                                Maintenance
+                              </Badge>
+                            )}
+                            {insp.priority && (
+                              <Badge
+                                variant={
+                                  insp.priority === "high"
+                                    ? "error"
+                                    : insp.priority === "medium"
+                                    ? "warning"
+                                    : "success"
+                                }
+                                size="small"
+                              >
+                                {`Priority: ${insp.priority}`}
+                              </Badge>
+                            )}
+                            {insp.photos && insp.photos.length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                size="small"
+                              >{`Photos: ${insp.photos.length}`}</Badge>
+                            )}
+                          </View>
+                          {insp.description && (
+                            <Text variant="bodySmall" color="neutral">
+                              {insp.description}
+                            </Text>
+                          )}
+                          <Text
+                            variant="bodySmall"
+                            color="primary"
+                            style={{ marginTop: spacing.xs }}
+                          >
+                            Tap to view details
+                          </Text>
+                        </Pressable>
+                      ))}
+                  </View>
+
+                  {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
+                </Card>
+              );
+            })}
+
+        {/* Vehicle cards */}
+        {assetTypeFilter !== "roads" &&
+          displayed
+            .filter((x: any) => (assetTypeFilter === "vehicles" ? true : x.type === "vehicle"))
+            .map((wrap: any, index: number) => {
+              const { veh, latestInspection, flags } = wrap.type ? wrap.data : wrap;
+              return (
+                <Card key={veh._id.toString()} style={[layoutStyles.mb3]}>
+                  <View row style={[layoutStyles.mb2]}>
+                    <View style={[layoutStyles.flex]}>
+                      <Text variant="h4" style={[layoutStyles.mb1]}>
+                        {veh.name}
+                      </Text>
+                      {veh.location && (
+                        <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
+                          📍 {veh.location}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Badge variant={getConditionColor(veh.condition as any)}>
+                        {`Condition: ${
+                          (veh.condition as any) === AssetCondition.GOOD
+                            ? "Good"
+                            : (veh.condition as any) === AssetCondition.FAIR
+                            ? "Fair"
+                            : "Poor"
+                        }`}
+                      </Badge>
+                    </View>
+                  </View>
+
+                  {/* Attention reasons */}
+                  {(() => {
+                    const reasons = getAttentionReasonBadges(flags);
+                    if (reasons.length === 0) return null;
+                    const badgeVariant = (reason: string) => {
+                      if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
+                      if (reason === "Condition: Poor") return "error" as const;
+                      if (reason === "Due soon") return "warning" as const;
+                      return "secondary" as const;
+                    };
+                    return (
+                      <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
+                        {reasons.map((r) => (
+                          <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
+                            <Badge variant={badgeVariant(r)} size="small">
+                              {r}
+                            </Badge>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })()}
+
+                  <View row style={[layoutStyles.mb2]}>
+                    {typeof veh.mileage === "number" && (
+                      <View style={[layoutStyles.flex]}>
+                        <Text variant="bodySmall" color="neutral">
+                          Mileage
+                        </Text>
+                        <Text variant="body">{Math.round(veh.mileage)} km</Text>
+                      </View>
+                    )}
+                    {typeof veh.hours === "number" && (
+                      <View style={[layoutStyles.flex]}>
+                        <Text variant="bodySmall" color="neutral">
+                          Hours
+                        </Text>
+                        <Text variant="body">{Math.round(veh.hours)}</Text>
+                      </View>
+                    )}
+                    {veh.lastServiceDate && (
+                      <View style={[layoutStyles.flex]}>
+                        <Text variant="bodySmall" color="neutral">
+                          Last Service
+                        </Text>
+                        <Text variant="body">{veh.lastServiceDate.toLocaleDateString()}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {veh.notes && (
+                    <View style={[layoutStyles.mb2]}>
+                      <Text variant="bodySmall" color="neutral">
+                        Notes
+                      </Text>
+                      <Text variant="body">{veh.notes}</Text>
+                    </View>
+                  )}
+
+                  {showQRCodes.has(veh._id.toHexString()) && veh.qrTagId && (
+                    <View style={[layoutStyles.mb3]}>
+                      <Divider style={[layoutStyles.mb2]} />
+                      <QRCodeDisplay qrTagId={veh.qrTagId} assetName={veh.name} size={150} />
+                    </View>
+                  )}
+
+                  <Divider style={[layoutStyles.my2]} />
+
+                  <View spaceBetween style={[layoutStyles.mb2]}>
+                    <View>
+                      <Text variant="bodySmall" color="neutral">
+                        Created
+                      </Text>
+                      <Text variant="bodySmall">{formatDate(veh.createdAt)}</Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      layoutStyles.mt2,
+                      { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+                    ]}
+                  >
+                    <Button
+                      variant={expandedAssetId === veh._id.toHexString() ? "secondary" : "primary"}
+                      onPress={() =>
+                        setExpandedAssetId(
+                          expandedAssetId === veh._id.toHexString() ? null : veh._id.toHexString()
+                        )
+                      }
+                      size="small"
+                    >
+                      {expandedAssetId === veh._id.toHexString()
+                        ? "Hide Inspection"
+                        : "Add Inspection"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => setEditingVehicleId(veh._id.toHexString())}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => setShowAllInspections(veh._id.toHexString())}
+                    >
+                      View All
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onPress={() => {
+                        const assetId = veh._id.toHexString();
+                        setShowQRCodes((prev) => {
+                          const newSet = new Set(prev);
+                          if (newSet.has(assetId)) {
+                            newSet.delete(assetId);
+                          } else {
+                            newSet.add(assetId);
+                          }
+                          return newSet;
+                        });
+                      }}
+                    >
+                      <View row center style={{ gap: spacing.xs }}>
+                        <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                      </View>
+                    </Button>
+                  </View>
+
+                  {expandedAssetId === veh._id.toHexString() && (
+                    <NewInspectionForm
+                      assetId={veh._id.toHexString()}
+                      onCreated={() => setExpandedAssetId(null)}
+                    />
+                  )}
+
+                  {/* Inspections list */}
+                  <View style={[layoutStyles.mt2]}>
+                    <Text variant="bodySmall" color="neutral">
+                      Recent Inspections
+                    </Text>
+                    {[...allInspections]
+                      .filter((i) => i.assetId === veh._id.toHexString())
+                      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                      .slice(0, 3)
+                      .map((insp) => (
+                        <Pressable
+                          key={insp._id.toHexString()}
+                          onPress={() => setSelectedInspection(insp)}
+                          style={[
+                            layoutStyles.mt1,
+                            {
+                              padding: spacing.md,
+                              backgroundColor: colors.neutral.lightest,
+                              borderRadius: spacing.md,
+                              borderWidth: 1,
+                              borderColor: colors.border.light,
+                            },
+                          ]}
+                        >
+                          <Text variant="body">{insp.timestamp.toLocaleDateString()}</Text>
+                          <View
+                            row
+                            style={{ marginTop: spacing.xs, flexWrap: "wrap", gap: spacing.xs }}
+                          >
+                            <Badge
+                              variant={
+                                insp.score >= 4 ? "success" : insp.score >= 3 ? "warning" : "error"
+                              }
+                              size="small"
+                            >
+                              {`Condition: ${
+                                insp.score >= 4 ? "Good" : insp.score >= 3 ? "Fair" : "Poor"
+                              }`}
+                            </Badge>
+                            {insp.issueType && (
+                              <Badge
+                                variant={
+                                  insp.issueType === "potholes"
+                                    ? "error"
+                                    : insp.issueType === "cracks" || insp.issueType === "drainage"
+                                    ? "warning"
+                                    : "secondary"
+                                }
+                                size="small"
+                              >
+                                {`Issue: ${
+                                  insp.issueType === "potholes"
+                                    ? "Potholes"
+                                    : insp.issueType === "cracks"
+                                    ? "Cracks"
+                                    : insp.issueType === "drainage"
+                                    ? "Drainage"
+                                    : "Other"
+                                }`}
+                              </Badge>
+                            )}
+                            {insp.maintenanceNeeded && (
+                              <Badge variant="error" size="small">
+                                Maintenance
+                              </Badge>
+                            )}
+                            {insp.priority && (
+                              <Badge
+                                variant={
+                                  insp.priority === "high"
+                                    ? "error"
+                                    : insp.priority === "medium"
+                                    ? "warning"
+                                    : "success"
+                                }
+                                size="small"
+                              >
+                                {`Priority: ${insp.priority}`}
+                              </Badge>
+                            )}
+                            {insp.photos && insp.photos.length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                size="small"
+                              >{`Photos: ${insp.photos.length}`}</Badge>
+                            )}
+                          </View>
+                          {insp.description && (
+                            <Text variant="bodySmall" color="neutral">
+                              {insp.description}
+                            </Text>
+                          )}
+                          <Text
+                            variant="bodySmall"
+                            color="primary"
+                            style={{ marginTop: spacing.xs }}
+                          >
+                            Tap to view details
+                          </Text>
+                        </Pressable>
+                      ))}
+                  </View>
+
+                  {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
+                </Card>
+              );
+            })}
       </View>
 
       <Modal
@@ -494,7 +873,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
         onRequestClose={() => setEditingRoadId(null)}
       >
         {editingRoadId && (
-          <EditAssetForm
+          <EditRoadForm
             road={roads.filtered("_id == $0", new Realm.BSON.ObjectId(editingRoadId))[0] as Road}
             onClose={() => setEditingRoadId(null)}
             onSaved={() => {
@@ -521,6 +900,30 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           onInspectionTap={setSelectedInspection}
         />
       )}
+
+      {/* Vehicle Edit Modal */}
+      <Modal
+        visible={!!editingVehicleId}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditingVehicleId(null)}
+      >
+        {editingVehicleId && (
+          <EditVehicleForm
+            vehicle={
+              vehicles.filtered(
+                "_id == $0",
+                new Realm.BSON.ObjectId(editingVehicleId)
+              )[0] as Vehicle
+            }
+            onClose={() => setEditingVehicleId(null)}
+            onSaved={() => {
+              setHighlightedAssetId(editingVehicleId);
+              setTimeout(() => setHighlightedAssetId(null), 1500);
+            }}
+          />
+        )}
+      </Modal>
     </ScrollView>
   );
 }

@@ -42,7 +42,14 @@ export default function QRCodeDisplay({ qrTagId, assetName, size = 200 }: QRCode
         svgRef.current?.toDataURL((data: string) => resolve(data));
       });
 
-      const fileName = `qr_${qrTagId.replace(/[^a-zA-Z0-9-_]/g, "_")}.png`;
+      const sanitize = (value: string): string =>
+        value
+          .replace(/[^a-zA-Z0-9-_]/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      const tagPart = sanitize(qrTagId);
+      const namePart = assetName ? sanitize(assetName) : "QR";
+      const fileName = `${namePart}__${tagPart}.png`;
       const baseDir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
       if (!baseDir) {
         setSaving(false);
@@ -63,12 +70,6 @@ export default function QRCodeDisplay({ qrTagId, assetName, size = 200 }: QRCode
 
   return (
     <StyledView center style={styles.container}>
-      {assetName && (
-        <StyledText variant="h3" center style={layoutStyles.mb2}>
-          {assetName}
-        </StyledText>
-      )}
-
       <StyledView center card style={[styles.qrContainer, { width: size + 40, height: size + 40 }]}>
         <QRCode
           getRef={(c) => (svgRef.current = c)}

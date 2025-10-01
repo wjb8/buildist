@@ -1,9 +1,10 @@
 import { getRealm } from "@/storage/realm";
 import { Road } from "@/storage/models/assets/Road";
+import { Vehicle } from "@/storage/models/assets/Vehicle";
 
 export interface QRScanResult {
   success: boolean;
-  asset?: Road;
+  asset?: Road | Vehicle;
   message: string;
 }
 
@@ -15,8 +16,14 @@ export class QRService {
     try {
       const realm = await getRealm();
 
-      // Find asset by QR tag ID
-      const asset = realm.objects(Road).filtered("qrTagId == $0", qrTagId)[0];
+      // Find asset by QR tag ID across known asset types
+      let asset: Road | Vehicle | undefined = realm
+        .objects(Road)
+        .filtered("qrTagId == $0", qrTagId)[0] as Road | undefined;
+
+      if (!asset) {
+        asset = realm.objects(Vehicle).filtered("qrTagId == $0", qrTagId)[0] as Vehicle | undefined;
+      }
 
       if (!asset) {
         return {
@@ -48,11 +55,17 @@ export class QRService {
     return `ROA-${timestamp}-${random}`.toUpperCase();
   }
 
+  static generateVehicleQRTagId(): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 5);
+    return `VEH-${timestamp}-${random}`.toUpperCase();
+  }
+
   /**
    * Validate QR tag ID format
    */
   static isValidQRTagId(qrTagId: string): boolean {
-    return /^ROA-[A-Z0-9]+-[A-Z0-9]+$/.test(qrTagId);
+    return /^(ROA|VEH)-[A-Z0-9]+-[A-Z0-9]+$/.test(qrTagId);
   }
 
   /**
@@ -61,8 +74,9 @@ export class QRService {
   static async isQRTagIdInUse(qrTagId: string): Promise<boolean> {
     try {
       const realm = await getRealm();
-      const existingAsset = realm.objects(Road).filtered("qrTagId == $0", qrTagId)[0];
-      return !!existingAsset;
+      const road = realm.objects(Road).filtered("qrTagId == $0", qrTagId)[0];
+      const vehicle = realm.objects(Vehicle).filtered("qrTagId == $0", qrTagId)[0];
+      return !!(road || vehicle);
     } catch (error) {
       console.error("Error checking QR tag ID:", error);
       return false;
