@@ -18,3 +18,7 @@ export interface VehicleData extends AssetData {
   photoUris?: string[];
 }
 
+
+
+
+
