@@ -1,15 +1,16 @@
 import Realm from "realm";
 import { Road } from "./models/assets/Road";
+import { Vehicle } from "./models/assets/Vehicle";
 import { Inspection } from "./models/Inspection";
 
 const realmConfig: Realm.Configuration = {
-  schema: [Road, Inspection],
-  schemaVersion: 3,
+  schema: [Road, Vehicle, Inspection],
+  schemaVersion: 4,
 };
 
 // Export schema for RealmProvider
-export const schema = [Road, Inspection];
-export const schemaVersion = 3;
+export const schema = [Road, Vehicle, Inspection];
+export const schemaVersion = 4;
 
 // init and get realm instance
 export const initRealm = async (): Promise<Realm> => {

@@ -26,6 +26,7 @@ import { colors, layoutStyles, spacing, inputStyles } from "@/styles";
 import Select from "./Select";
 import { AssetCondition } from "@/types";
 import { Road } from "@/storage/models/assets/Road";
+import { Vehicle } from "@/storage/models/assets/Vehicle";
 
 interface NewInspectionFormProps {
   assetId: string;
@@ -35,7 +36,7 @@ interface NewInspectionFormProps {
 interface FormState {
   inspector: string;
   description: string;
-  score: string; // store as string in input, convert to number on save
+  condition: AssetCondition;
   maintenanceNeeded: boolean;
   nextDue: Date | null;
   showDatePicker?: boolean;
@@ -49,7 +50,7 @@ interface FormState {
 const initialState: FormState = {
   inspector: "",
   description: "",
-  score: "",
+  condition: AssetCondition.GOOD,
   maintenanceNeeded: false,
   nextDue: null,
   showDatePicker: false,
@@ -69,15 +70,16 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [mediaPermissionStatus, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<any>(null);
+  const [showAddPhotoOptions, setShowAddPhotoOptions] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [galleryAssets, setGalleryAssets] = useState<any[]>([]);
+  const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
-  // Auto-calc maintenanceNeeded from score<=2 unless manually edited
+  // Auto-calc maintenanceNeeded when condition is POOR unless manually edited
   useEffect(() => {
     if (manualEditedMaintenance) return;
-    const scoreNum = parseInt(form.score, 10);
-    if (!isNaN(scoreNum)) {
-      setForm((prev) => ({ ...prev, maintenanceNeeded: scoreNum <= 2 }));
-    }
-  }, [form.score, manualEditedMaintenance]);
+    setForm((prev) => ({ ...prev, maintenanceNeeded: form.condition === AssetCondition.POOR }));
+  }, [form.condition, manualEditedMaintenance]);
 
   const handleChange = (key: keyof FormState, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -88,8 +90,7 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
     const nextErrors: string[] = [];
     if (!assetId) nextErrors.push("Missing asset reference");
     if (!form.inspector.trim()) nextErrors.push("Inspector is required");
-    const scoreNum = parseInt(form.score, 10);
-    if (isNaN(scoreNum) || scoreNum < 1 || scoreNum > 5) nextErrors.push("Score must be 1–5");
+    if (!form.condition) nextErrors.push("Condition is required");
 
     // Validate inspection date is not in the future
     if (form.inspectionDate && form.inspectionDate > new Date()) {
@@ -107,16 +108,10 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
     try {
       const realm = await getRealm();
       const now = new Date();
-      const scoreNum = parseInt(form.score, 10);
-
-      // Determine asset condition based on inspection score
-      const getConditionFromScore = (score: number): AssetCondition => {
-        if (score <= 2) return AssetCondition.POOR;
-        if (score <= 3) return AssetCondition.FAIR;
-        return AssetCondition.GOOD;
-      };
-
-      const newCondition = getConditionFromScore(scoreNum);
+      // Map selected condition to a numeric score for compatibility
+      const scoreNum =
+        form.condition === AssetCondition.POOR ? 2 : form.condition === AssetCondition.FAIR ? 3 : 4;
+      const newCondition = form.condition;
 
       realm.write(() => {
         realm.create("Inspection", {
@@ -137,11 +132,18 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
         });
 
         // Update asset condition based on inspection score
-        const road = realm.objectForPrimaryKey<Road>("Road", new Realm.BSON.ObjectId(assetId));
+        const objId = new Realm.BSON.ObjectId(assetId);
+        const road = realm.objectForPrimaryKey<Road>("Road", objId);
         if (road && road.condition !== newCondition) {
           road.condition = newCondition;
           road.updatedAt = now;
           road.synced = false;
+        }
+        const vehicle = realm.objectForPrimaryKey<Vehicle>("Vehicle", objId);
+        if (vehicle && vehicle.condition !== newCondition) {
+          vehicle.condition = newCondition;
+          vehicle.updatedAt = now;
+          vehicle.synced = false;
         }
       });
 
@@ -175,12 +177,40 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
   };
 
   const handleAddPhoto = async () => {
+    setShowAddPhotoOptions(true);
+  };
+
+  const openCamera = async () => {
     const ok = await ensurePermissions();
     if (!ok) {
       Alert.alert("Permission Required", "Camera and photo permissions are required.");
       return;
     }
+    setShowAddPhotoOptions(false);
     setShowCamera(true);
+  };
+
+  const openGallery = async () => {
+    try {
+      if (!mediaPermissionStatus?.granted) {
+        const med = await requestMediaPermission();
+        if (!med.granted) return;
+      }
+      setIsLoadingGallery(true);
+      const assets = await MediaLibrary.getAssetsAsync({
+        first: 40,
+        sortBy: MediaLibrary.SortBy.creationTime as any,
+        mediaType: [MediaLibrary.MediaType.photo],
+      });
+      setGalleryAssets(assets.assets || []);
+      setShowAddPhotoOptions(false);
+      setShowGallery(true);
+    } catch (e) {
+      console.error("Failed to open gallery", e);
+      Alert.alert("Error", "Could not load gallery.");
+    } finally {
+      setIsLoadingGallery(false);
+    }
   };
 
   const handleCapture = async () => {
@@ -239,14 +269,18 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
           style={[layoutStyles.mb3]}
         />
 
-        <Input
-          label="Condition Score (1–5) *"
-          value={form.score}
-          onChangeText={(v) => handleChange("score", v.replace(/[^0-9]/g, ""))}
-          placeholder="1 to 5"
-          keyboardType={"number-pad" as KeyboardTypeOptions}
-          style={[layoutStyles.mb3]}
-        />
+        <View style={[layoutStyles.mb3]}>
+          <Select
+            label="Condition *"
+            value={form.condition}
+            onChange={(v) => handleChange("condition", v as AssetCondition)}
+            options={[
+              { value: AssetCondition.GOOD, label: "Good" },
+              { value: AssetCondition.FAIR, label: "Fair" },
+              { value: AssetCondition.POOR, label: "Poor" },
+            ]}
+          />
+        </View>
 
         <Input
           label="Notes"
@@ -460,6 +494,85 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
             </View>
           </CameraView>
         </View>
+      </Modal>
+
+      {/* Add Photo Options Modal */}
+      <Modal
+        visible={showAddPhotoOptions}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowAddPhotoOptions(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" }}>
+          <Card style={[layoutStyles.p3, { marginHorizontal: spacing.lg }]}>
+            <Text variant="h4" style={[layoutStyles.mb2]}>
+              Add Photo
+            </Text>
+            <Button variant="primary" style={[layoutStyles.mb2]} onPress={openCamera}>
+              Take Photo
+            </Button>
+            <Button variant="secondary" onPress={openGallery}>
+              Choose from Gallery
+            </Button>
+            <Button
+              variant="secondary"
+              style={[layoutStyles.mt2]}
+              onPress={() => setShowAddPhotoOptions(false)}
+            >
+              Cancel
+            </Button>
+          </Card>
+        </View>
+      </Modal>
+
+      {/* Simple Gallery Picker Modal */}
+      <Modal
+        visible={showGallery}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowGallery(false)}
+      >
+        <ScrollView style={[layoutStyles.flex]}>
+          <View style={[layoutStyles.p3]}>
+            <Text variant="h4" style={[layoutStyles.mb2]}>
+              Select a photo
+            </Text>
+            {isLoadingGallery && (
+              <Text variant="body" style={[layoutStyles.mb2]}>
+                Loading...
+              </Text>
+            )}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {galleryAssets.map((asset) => (
+                <Pressable
+                  key={asset.id}
+                  onPress={async () => {
+                    try {
+                      const info = await MediaLibrary.getAssetInfoAsync(asset.id);
+                      const uri = (info as any).localUri || asset.uri;
+                      if (uri) {
+                        setForm((prev) => ({ ...prev, photos: [...prev.photos, uri] }));
+                        setShowGallery(false);
+                      }
+                    } catch (e) {
+                      console.error("Failed to get asset info", e);
+                    }
+                  }}
+                >
+                  <Image
+                    source={{ uri: asset.uri }}
+                    style={{ width: 100, height: 100, borderRadius: 6 }}
+                  />
+                </Pressable>
+              ))}
+            </View>
+            <View style={[layoutStyles.mt2]}>
+              <Button variant="secondary" onPress={() => setShowGallery(false)}>
+                Close
+              </Button>
+            </View>
+          </View>
+        </ScrollView>
       </Modal>
     </ScrollView>
   );

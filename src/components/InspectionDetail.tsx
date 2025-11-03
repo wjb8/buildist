@@ -1,5 +1,9 @@
-import React, { useState } from "react";
-import { Modal, ScrollView, Image, View as RNView, Pressable } from "react-native";
+import React, { useRef, useState } from "react";
+import { Modal, ScrollView, Image, View as RNView, Pressable, Alert } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import Realm from "realm";
+import { getRealm } from "@/storage/realm";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -17,6 +21,15 @@ interface InspectionDetailProps {
 
 export default function InspectionDetail({ inspection, visible, onClose }: InspectionDetailProps) {
   const [expandedPhotoUri, setExpandedPhotoUri] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [mediaPermissionStatus, requestMediaPermission] = MediaLibrary.usePermissions();
+  const [isSaving, setIsSaving] = useState(false);
+  const cameraRef = useRef<any>(null);
+  const [showAddPhotoOptions, setShowAddPhotoOptions] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [galleryAssets, setGalleryAssets] = useState<any[]>([]);
+  const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
   if (!inspection) return null;
 
@@ -90,14 +103,14 @@ export default function InspectionDetail({ inspection, visible, onClose }: Inspe
 
               <View style={[layoutStyles.mb3]}>
                 <Text variant="bodySmall" color="neutral" style={[layoutStyles.mb1]}>
-                  Condition Score
+                  Condition
                 </Text>
                 <Badge
                   variant={
                     inspection.score >= 4 ? "success" : inspection.score >= 3 ? "warning" : "error"
                   }
                 >
-                  {inspection.score}/5
+                  {inspection.score >= 4 ? "Good" : inspection.score >= 3 ? "Fair" : "Poor"}
                 </Badge>
               </View>
 
@@ -144,6 +157,16 @@ export default function InspectionDetail({ inspection, visible, onClose }: Inspe
                   <Text variant="body">{inspection.nextDue.toLocaleDateString()}</Text>
                 </View>
               )}
+
+              <View style={[layoutStyles.mt2]}>
+                <Button
+                  variant="secondary"
+                  onPress={() => setShowAddPhotoOptions(true)}
+                  size="small"
+                >
+                  Add Photo
+                </Button>
+              </View>
             </Card>
 
             {inspection.photos && inspection.photos.length > 0 && (
@@ -163,6 +186,201 @@ export default function InspectionDetail({ inspection, visible, onClose }: Inspe
                 </RNView>
               </Card>
             )}
+          </View>
+        </ScrollView>
+      </Modal>
+
+      {/* Camera Modal */}
+      <Modal
+        visible={showCamera}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowCamera(false)}
+      >
+        <RNView style={[layoutStyles.flex]}>
+          <CameraView ref={cameraRef} style={[layoutStyles.flex]} facing="back">
+            <RNView style={{ position: "absolute", bottom: 40, left: 0, right: 0 }}>
+              <View row style={[layoutStyles.rowCenter]}>
+                <Button variant="secondary" onPress={() => setShowCamera(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  style={[layoutStyles.ml2]}
+                  onPress={async () => {
+                    try {
+                      // Ensure permissions
+                      if (!cameraPermission?.granted) {
+                        const cam = await requestCameraPermission();
+                        if (!cam.granted) return;
+                      }
+                      if (!mediaPermissionStatus?.granted) {
+                        const med = await requestMediaPermission();
+                        if (!med.granted) return;
+                      }
+
+                      // Take picture (same approach as NewInspectionForm)
+                      if (!cameraRef.current) return;
+                      const result = await cameraRef.current.takePictureAsync({
+                        quality: 0.7,
+                        skipProcessing: true,
+                      });
+                      if (!result?.uri) return;
+                      await MediaLibrary.saveToLibraryAsync(result.uri);
+                      const uri = result.uri;
+                      setIsSaving(true);
+                      const realm = await getRealm();
+                      realm.write(() => {
+                        const found = realm.objectForPrimaryKey<Inspection>(
+                          "Inspection",
+                          inspection!._id
+                        );
+                        if (!found) throw new Error("Inspection not found");
+                        // Append photo URI
+                        (found.photos as unknown as string[]).push(uri);
+                        found.updatedAt = new Date();
+                        found.synced = false;
+                      });
+                      setShowCamera(false);
+                    } catch (e) {
+                      console.error("Failed to add photo to inspection", e);
+                      Alert.alert("Error", "Could not add photo. Please try again.");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                >
+                  Capture
+                </Button>
+              </View>
+            </RNView>
+          </CameraView>
+        </RNView>
+      </Modal>
+
+      {/* Add Photo Options Modal */}
+      <Modal
+        visible={showAddPhotoOptions}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowAddPhotoOptions(false)}
+      >
+        <RNView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" }}>
+          <Card style={[layoutStyles.p3, { marginHorizontal: spacing.lg }]}>
+            <Text variant="h4" style={[layoutStyles.mb2]}>
+              Add Photo
+            </Text>
+            <Button
+              variant="primary"
+              style={[layoutStyles.mb2]}
+              onPress={async () => {
+                try {
+                  if (!cameraPermission?.granted) {
+                    const cam = await requestCameraPermission();
+                    if (!cam.granted) return;
+                  }
+                  if (!mediaPermissionStatus?.granted) {
+                    const med = await requestMediaPermission();
+                    if (!med.granted) return;
+                  }
+                  setShowAddPhotoOptions(false);
+                  setShowCamera(true);
+                } catch {}
+              }}
+            >
+              Take Photo
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={async () => {
+                try {
+                  if (!mediaPermissionStatus?.granted) {
+                    const med = await requestMediaPermission();
+                    if (!med.granted) return;
+                  }
+                  setIsLoadingGallery(true);
+                  const assets = await MediaLibrary.getAssetsAsync({
+                    first: 40,
+                    sortBy: MediaLibrary.SortBy.creationTime as any,
+                    mediaType: [MediaLibrary.MediaType.photo],
+                  });
+                  setGalleryAssets(assets.assets || []);
+                  setShowAddPhotoOptions(false);
+                  setShowGallery(true);
+                } catch (e) {
+                } finally {
+                  setIsLoadingGallery(false);
+                }
+              }}
+            >
+              Choose from Gallery
+            </Button>
+            <Button
+              variant="secondary"
+              style={[layoutStyles.mt2]}
+              onPress={() => setShowAddPhotoOptions(false)}
+            >
+              Cancel
+            </Button>
+          </Card>
+        </RNView>
+      </Modal>
+
+      {/* Simple Gallery Picker Modal */}
+      <Modal
+        visible={showGallery}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowGallery(false)}
+      >
+        <ScrollView style={[layoutStyles.flex]}>
+          <View style={[layoutStyles.p3]}>
+            <Text variant="h4" style={[layoutStyles.mb2]}>
+              Select a photo
+            </Text>
+            {isLoadingGallery && (
+              <Text variant="body" style={[layoutStyles.mb2]}>
+                Loading...
+              </Text>
+            )}
+            <RNView style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {galleryAssets.map((asset) => (
+                <Pressable
+                  key={asset.id}
+                  onPress={async () => {
+                    try {
+                      const info = await MediaLibrary.getAssetInfoAsync(asset.id);
+                      const uri = (info as any).localUri || asset.uri;
+                      if (uri) {
+                        const realm = await getRealm();
+                        realm.write(() => {
+                          const found = realm.objectForPrimaryKey<Inspection>(
+                            "Inspection",
+                            inspection!._id
+                          );
+                          if (!found) throw new Error("Inspection not found");
+                          (found.photos as unknown as string[]).push(uri);
+                          found.updatedAt = new Date();
+                          found.synced = false;
+                        });
+                        setShowGallery(false);
+                      }
+                    } catch (e) {}
+                  }}
+                  style={{ marginRight: spacing.sm, marginBottom: spacing.sm }}
+                >
+                  <Image
+                    source={{ uri: asset.uri }}
+                    style={{ width: 100, height: 100, borderRadius: 6 }}
+                  />
+                </Pressable>
+              ))}
+            </RNView>
+            <View style={[layoutStyles.mt2]}>
+              <Button variant="secondary" onPress={() => setShowGallery(false)}>
+                Close
+              </Button>
+            </View>
           </View>
         </ScrollView>
       </Modal>

@@ -1,13 +1,15 @@
 import Realm from "realm";
 import { getRealm } from "@/storage/realm";
 import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
+import { VehiclePriority } from "@/types/vehicle";
 
 export const seedDemoData = async (forceReseed = false) => {
   try {
     const realm = await getRealm();
     const existingRoads = realm.objects("Road");
+    const existingVehicles = realm.objects("Vehicle");
 
-    if (existingRoads.length > 0 && !forceReseed) {
+    if ((existingRoads.length > 0 || existingVehicles.length > 0) && !forceReseed) {
       console.log("Demo data already exists, skipping seeding");
       return;
     }
@@ -134,12 +136,34 @@ export const seedDemoData = async (forceReseed = false) => {
         });
         roadIds.push(roadId.toHexString());
       }
+
+      // Seed one demo vehicle (Snowplow Truck #3)
+      const vehicleId = new Realm.BSON.ObjectId();
+      const vehicleQr = generateVehicleQR();
+      realm.create("Vehicle", {
+        _id: vehicleId,
+        name: "Snowplow Truck #3",
+        identifier: "Snowplow Truck #3",
+        location: "Municipal Garage",
+        condition: AssetCondition.FAIR,
+        notes: "Plow blade shows moderate wear. Oil change due soon.",
+        qrTagId: vehicleQr,
+        mileage: 48210,
+        hours: 1380,
+        lastServiceDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        requiresService: true,
+        priority: VehiclePriority.HIGH,
+        photoUris: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        synced: false,
+      });
     });
 
     // Add demo inspections to showcase different scenarios
     await seedDemoInspections(realm, roadIds);
 
-    console.log(`Successfully seeded ${demoRoads.length} demo road assets with inspections`);
+    console.log(`Seeded ${demoRoads.length} roads and 1 vehicle with inspections`);
   } catch (error) {
     console.error("Failed to seed demo data:", error);
   }
@@ -164,6 +188,11 @@ export const forceReseedDemoData = async () => {
 const generateQRTagId = (): string => {
   const timestamp = Date.now().toString(36);
   return `ROA-${timestamp}`;
+};
+
+const generateVehicleQR = (): string => {
+  const timestamp = Date.now().toString(36);
+  return `VEH-${timestamp}`;
 };
 
 const seedDemoInspections = async (realm: Realm, roadIds: string[]) => {

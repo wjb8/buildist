@@ -1,5 +1,6 @@
 export enum AssetType {
   ROAD = "road",
+  VEHICLE = "vehicle",
   BRIDGE = "bridge",
   SIDEWALK = "sidewalk",
   STREET_LIGHT = "street_light",

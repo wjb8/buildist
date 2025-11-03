@@ -13,7 +13,7 @@ import { Button } from "./Button";
 import { Card } from "./Card";
 import { colors, spacing, layoutStyles } from "@/styles";
 
-interface EditAssetFormProps {
+interface EditRoadFormProps {
   road: Road;
   onClose: () => void;
   onSaved?: () => void;
@@ -33,7 +33,7 @@ interface FormData {
   speedLimit: string;
 }
 
-export default function EditAssetForm({ road, onClose, onSaved }: EditAssetFormProps) {
+export default function EditRoadForm({ road, onClose, onSaved }: EditRoadFormProps) {
   const [form, setForm] = useState<FormData>(() => ({
     name: road.name,
     location: road.location ?? "",

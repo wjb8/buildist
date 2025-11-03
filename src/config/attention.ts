@@ -125,7 +125,7 @@ export function getAttentionReasonBadges(flags: AttentionFlags): string[] {
   if (flags.overdue) badges.push("Overdue");
   if (flags.maintenance) badges.push("Maintenance");
   if (flags.dueSoon) badges.push("Due soon");
-  if (flags.poorCondition) badges.push("Poor condition");
+  if (flags.poorCondition) badges.push("Condition: Poor");
   if (flags.repairPlan) badges.push("Repair plan");
   if (flags.councilFlag) badges.push("Council flag");
   return badges;
