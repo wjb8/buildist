@@ -1,5 +1,4 @@
 // Minimal serverless-compatible proxy for OpenAI tool-calling
-// Deploy as a serverless function (e.g., Vercel/Supabase/Cloudflare) and set OPENAI_API_KEY
 
 import { TOOL_DEFINITIONS, parseToolArguments } from "./tools";
 
@@ -9,6 +8,7 @@ export interface ProxyRequestBody {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  // Reject non-POST requests and ensure the proxy has the credentials it needs
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return new Response("Missing OPENAI_API_KEY", { status: 500 });
@@ -17,6 +17,7 @@ export default async function handler(req: Request): Promise<Response> {
   const prompt = body.prompt?.toString() ?? "";
   if (!prompt) return new Response(JSON.stringify({ content: ["Empty prompt"] }), { status: 400 });
 
+  // Build the request payload for the OpenAI Responses API
   const payload: Record<string, unknown> = {
     input: prompt,
     tools: TOOL_DEFINITIONS,
@@ -29,6 +30,7 @@ export default async function handler(req: Request): Promise<Response> {
     payload.model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
   }
 
+  // Call OpenAI with the prompt and tool definitions
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -45,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const data = await response.json();
 
-  // Normalize into { content: string[], toolCalls?: { name, arguments }[] }
+  // Normalize the OpenAI output into { content: string[], toolCalls?: ... }
   const content: string[] = [];
   const toolCalls: Array<{ name: string; arguments: unknown }> = [];
 

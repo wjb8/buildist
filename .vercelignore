@@ -1,0 +1,12 @@
+node_modules
+.expo
+.expo-shared
+android
+ios
+.git
+.gitignore
+metro-cache
+dist
+build
+*.log
+*.lock
