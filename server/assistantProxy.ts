@@ -3,6 +3,8 @@
 
 import { TOOL_DEFINITIONS, parseToolArguments } from "./tools";
 
+declare const process: { env: Record<string, string | undefined> };
+
 export interface ProxyRequestBody {
   prompt: string;
   assistantId?: string;
