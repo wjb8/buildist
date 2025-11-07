@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
@@ -17,7 +17,10 @@ export default function AIAssistant({ onActionApplied }: AIAssistantProps) {
 	const [loading, setLoading] = useState(false);
 	const [messages, setMessages] = useState<string[]>([]);
 	const [proposal, setProposal] = useState<AIProposedAction | null>(null);
-	const ai = new AIService({ proxyBaseUrl: AI_PROXY_BASE_URL, assistantId: OPENAI_ASSISTANT_ID });
+	const ai = useMemo(
+		() => new AIService({ proxyBaseUrl: AI_PROXY_BASE_URL, assistantId: OPENAI_ASSISTANT_ID }),
+		[AI_PROXY_BASE_URL, OPENAI_ASSISTANT_ID]
+	);
 
 	const handleSend = async () => {
 		if (!prompt.trim()) return;
@@ -106,7 +109,5 @@ export default function AIAssistant({ onActionApplied }: AIAssistantProps) {
 		</ScrollView>
 	);
 }
-
-
 
 

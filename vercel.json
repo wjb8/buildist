@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/assistantProxy.ts": {
-      "runtime": "edge"
-    }
-  }
-}

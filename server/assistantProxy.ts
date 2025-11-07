@@ -1,4 +1,5 @@
 // Minimal serverless-compatible proxy for OpenAI tool-calling
+// Deploy as a serverless function (e.g., Vercel/Supabase/Cloudflare) and set OPENAI_API_KEY
 
 import { TOOL_DEFINITIONS, parseToolArguments } from "./tools";
 

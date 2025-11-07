@@ -13,6 +13,7 @@ import { Button } from "./Button";
 import AssetForm from "./AssetForm";
 import AssetList from "./AssetList";
 import QRScanner from "./QRScanner";
+import AIAssistant from "./AIAssistant";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 import { Road } from "@/storage/models/assets/Road";
 import { QRService } from "@/services/QRService";
@@ -25,6 +26,7 @@ interface MainPageProps {
 export default function MainPage({ onLogout }: MainPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Seed demo data when component mounts
@@ -69,6 +71,11 @@ export default function MainPage({ onLogout }: MainPageProps) {
 
   const [focusQrTag, setFocusQrTag] = useState<string | undefined>(undefined);
 
+  const handleAssistantApplied = () => {
+    setShowAIAssistant(false);
+    handleRefresh();
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -112,6 +119,15 @@ export default function MainPage({ onLogout }: MainPageProps) {
                   style={[layoutStyles.flex, layoutStyles.ml2]}
                 >
                   Scan QR Code
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  onPress={() => setShowAIAssistant(true)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.ml2]}
+                >
+                  AI Assistant
                 </Button>
               </View>
             </View>
@@ -175,6 +191,15 @@ export default function MainPage({ onLogout }: MainPageProps) {
                 >
                   Scan QR Code
                 </Button>
+
+                <Button
+                  variant="secondary"
+                  onPress={() => setShowAIAssistant(true)}
+                  size="small"
+                  style={[layoutStyles.flex, layoutStyles.ml2]}
+                >
+                  AI Assistant
+                </Button>
               </View>
             </View>
 
@@ -198,6 +223,15 @@ export default function MainPage({ onLogout }: MainPageProps) {
           </Modal>
         </ScrollView>
       )}
+
+      <Modal
+        visible={showAIAssistant}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowAIAssistant(false)}
+      >
+        <AIAssistant onActionApplied={handleAssistantApplied} />
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
