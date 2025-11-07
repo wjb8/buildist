@@ -34,7 +34,7 @@ export class AIService {
 	}
 
 	async sendPromptAndPropose(prompt: string): Promise<AIResponse> {
-		const res = await fetch(`${this.proxyBaseUrl}/assistant/run`, {
+		const res = await fetch(this.proxyBaseUrl, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ prompt, assistantId: this.assistantId }),
@@ -70,7 +70,6 @@ export class AIService {
 		}
 	}
 }
-
 
 
 
