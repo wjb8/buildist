@@ -94,6 +94,12 @@ export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspe
     updatedAt: new Date("2024-01-01"),
     synced: true,
 
+    // Mock methods used in tests
+    update: jest.fn((fn?: () => void) => {
+      if (fn) fn();
+    }),
+    destroyPermanently: jest.fn(),
+
     ...overrides,
   } as unknown as Inspection;
 
