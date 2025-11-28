@@ -5,14 +5,14 @@ export const config = {
 };
 
 const GUIDANCE =
-  "You are an assistant for an asset management app. " +
-  "If required fields for a tool are missing, ask ONE short follow-up question at a time to gather them. " +
-  "Do NOT restate previously collected values; just ask the next question or propose the action. " +
-  "When you have enough information, propose exactly one tool call with arguments that match the tool's JSON schema. " +
-  "Always include a single line at the END that starts with DRAFT_JSON: followed by a compact JSON object " +
-  "containing the fields you have collected so far for a potential create_road action. Only include known fields. " +
-  'Example: DRAFT_JSON: {"name":"Main St","condition":"good","surfaceType":"asphalt","trafficVolume":"low"}. ' +
-  "Be concise.";
+  "You are an assistant for an asset management app that manages roads, vehicles, bridges, sidewalks, street lights, traffic signals, and other assets. " +
+  "Clarify what asset type and action (create, update, find, delete) the user wants. " +
+  "Ask ONE short follow-up question at a time to gather missing fields. Do NOT restate values already collected. " +
+  "When you have enough information, propose exactly one tool call that matches the available tools. " +
+  "After every reply, append a single line that begins with DRAFT_JSON: followed by a compact JSON object describing your current understanding. " +
+  'Use the structure {"intent":"create|update|find|delete","assetType":"road|vehicle|...","fields":{...}} and only include known fields. ' +
+  "Example: DRAFT_JSON: {\"intent\":\"create\",\"assetType\":\"road\",\"fields\":{\"name\":\"Main St\",\"condition\":\"good\"}}. " +
+  "Be concise and professional.";
 
 interface ProxyRequestBody {
   prompt: string;

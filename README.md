@@ -20,6 +20,7 @@ Buildist is an offline-first React Native app for managing civic infrastructure 
   1. Sends prompts to a proxy endpoint
   2. Shows the model’s proposed tool call
   3. Applies the change locally via Realm once approved
+- Admin login that persists locally via Expo SecureStore until the user logs out
 
 ## Architecture
 

@@ -6,6 +6,7 @@ import { RealmProvider } from "@realm/react";
 import { initRealm, schema, schemaVersion } from "@storage/realm";
 import { colors, spacing } from "./src/styles";
 import { View, Text, MainPage, LoginScreen } from "./src/components";
+import { getAuthState, clearAuthState } from "@/services/auth/storage";
 
 interface AppState {
   isLoading: boolean;
@@ -33,10 +34,14 @@ export default function App() {
       // Initialize the Realm database
       await initRealm();
 
-      // Add any other initialization logic here
-      // e.g., authentication, app state restoration, etc.
+      const storedSession = await getAuthState();
 
-      setAppState({ isLoading: false, isReady: true, isAuthenticated: false, error: null });
+      setAppState({
+        isLoading: false,
+        isReady: true,
+        isAuthenticated: Boolean(storedSession),
+        error: null,
+      });
     } catch (error) {
       console.error("Failed to initialize app:", error);
       setAppState({
@@ -59,6 +64,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    clearAuthState().catch((error) => console.error("Failed to clear auth state", error));
     setAppState((prev) => ({ ...prev, isAuthenticated: false }));
   };
 

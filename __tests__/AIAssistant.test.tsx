@@ -54,10 +54,10 @@ describe("AIAssistant", () => {
   });
 
   it("clears input after send and shows draft card", async () => {
-    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(
-      <AIAssistant />
+    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(<AIAssistant />);
+    const input = getByPlaceholderText(
+      "Describe what you want to do (e.g., create, update, or find an asset...)"
     );
-    const input = getByPlaceholderText("Describe what you want to do (e.g., create a road...)");
     fireEvent.changeText(input, "create a road");
     fireEvent.press(getByText("Send"));
 
@@ -67,7 +67,9 @@ describe("AIAssistant", () => {
 
   it("auto-proposes when required fields are complete", async () => {
     const { getByPlaceholderText, getByText, findByText } = render(<AIAssistant />);
-    const input = getByPlaceholderText("Describe what you want to do (e.g., create a road...)");
+    const input = getByPlaceholderText(
+      "Describe what you want to do (e.g., create, update, or find an asset...)"
+    );
 
     // First send -> collect some fields
     fireEvent.changeText(input, "create a road");
@@ -89,7 +91,9 @@ describe("AIAssistant", () => {
 
   it("resets state with Reset button", async () => {
     const { getByText, queryByText, getByPlaceholderText } = render(<AIAssistant />);
-    const input = getByPlaceholderText("Describe what you want to do (e.g., create a road...)");
+    const input = getByPlaceholderText(
+      "Describe what you want to do (e.g., create, update, or find an asset...)"
+    );
     fireEvent.changeText(input, "hello");
     fireEvent.press(getByText("Send"));
     await waitFor(() => expect(queryByText("Draft road details")).not.toBeNull());

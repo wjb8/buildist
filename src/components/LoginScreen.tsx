@@ -5,6 +5,7 @@ import { Text } from "./Text";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { colors, spacing, layoutStyles } from "@/styles";
+import { saveAuthState } from "@/services/auth/storage";
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -33,13 +34,28 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     // Simulate a brief delay for better UX
     setTimeout(() => {
       if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
-        onLoginSuccess();
+        persistSession();
       } else {
         setError("Invalid username or password");
         setPassword("");
+        setIsSubmitting(false);
       }
-      setIsSubmitting(false);
     }, 500);
+  };
+
+  const persistSession = async () => {
+    try {
+      await saveAuthState({
+        username: username.trim(),
+        loggedInAt: new Date().toISOString(),
+      });
+      onLoginSuccess();
+    } catch (persistError) {
+      console.error("Failed to persist login session", persistError);
+      setError("Unable to save login session. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: "username" | "password", value: string) => {

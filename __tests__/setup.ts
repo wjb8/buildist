@@ -1,21 +1,26 @@
 import "react-native-get-random-values";
+import React from "react";
 
 // Mock React Native modules
 jest.mock("react-native/Libraries/EventEmitter/NativeEventEmitter");
 
-// Mock React Navigation
-jest.mock("@react-navigation/native", () => ({
-  ...jest.requireActual("@react-navigation/native"),
-  useNavigation: () => ({
+// Mock React Navigation without requiring the ESM implementation
+jest.mock("@react-navigation/native", () => {
+  const mockNavigation = {
     navigate: jest.fn(),
     goBack: jest.fn(),
     dispatch: jest.fn(),
-  }),
-  useRoute: () => ({
-    params: {},
-  }),
-  useFocusEffect: jest.fn(),
-}));
+    canGoBack: jest.fn().mockReturnValue(false),
+  };
+
+  return {
+    NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
+    useNavigation: () => mockNavigation,
+    useRoute: () => ({ params: {} }),
+    useFocusEffect: jest.fn(),
+    createNavigationContainerRef: jest.fn(),
+  };
+});
 
 // Mock Expo modules
 jest.mock("expo-camera", () => ({
