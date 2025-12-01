@@ -71,9 +71,10 @@ export default function MainPage({ onLogout }: MainPageProps) {
 
   const [focusQrTag, setFocusQrTag] = useState<string | undefined>(undefined);
 
-  const handleAssistantApplied = () => {
-    setShowAIAssistant(false);
-    handleRefresh();
+  const handleAssistantApplied = (result: { success: boolean; message: string }) => {
+    if (result.success) {
+      handleRefresh();
+    }
   };
 
   return (
@@ -230,7 +231,10 @@ export default function MainPage({ onLogout }: MainPageProps) {
         presentationStyle="fullScreen"
         onRequestClose={() => setShowAIAssistant(false)}
       >
-        <AIAssistant onActionApplied={handleAssistantApplied} />
+        <AIAssistant
+          onActionApplied={handleAssistantApplied}
+          onClose={() => setShowAIAssistant(false)}
+        />
       </Modal>
     </KeyboardAvoidingView>
   );
