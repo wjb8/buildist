@@ -90,6 +90,23 @@ export default async function handler(req: Request): Promise<Response> {
       (payload as any).model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
     }
 
+<<<<<<< Updated upstream
+=======
+    console.log("[assistantProxy] Tool definitions:", TOOL_DEFINITIONS.length, "tools");
+    TOOL_DEFINITIONS.forEach((tool, i) => {
+      const desc = tool.description;
+      console.log(
+        `[assistantProxy] Tool ${i + 1}:`,
+        tool.name,
+        "-",
+        desc ? desc.slice(0, 50) : "no description"
+      );
+    });
+    console.log("[assistantProxy] Tool choice:", payload.tool_choice);
+    console.log("[assistantProxy] First 200 chars of GUIDANCE:", GUIDANCE.slice(0, 200));
+    console.log("[assistantProxy] Payload keys:", Object.keys(payload));
+
+>>>>>>> Stashed changes
     // Upstream fetch with timeout
     const controller = new AbortController();
     const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 20000);
