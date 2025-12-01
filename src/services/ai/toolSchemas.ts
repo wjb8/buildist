@@ -28,9 +28,10 @@ export interface DeleteAssetArgs {
 }
 
 export interface FindAssetArgs {
-  by: "id" | "name" | "qrTagId";
+  by: "id" | "name" | "nameContains" | "qrTagId" | "search";
   value: string;
   type?: "Road" | "Vehicle";
+  limit?: number;
 }
 
 export type ToolArgs =
