@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
-import { ScrollView } from "react-native";
+import { ScrollView, ActivityIndicator } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Input } from "./Input";
 import { Button } from "./Button";
+import { Card } from "./Card";
+import { Badge } from "./Badge";
 import { layoutStyles, spacing, colors } from "@/styles";
+import { AssetCondition, TrafficVolume } from "@/types";
 import {
   AIService,
   AIProposedAction,
@@ -29,18 +31,18 @@ interface DraftState {
 export default function AIAssistant({ onActionApplied, onClose }: AIAssistantProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [proposal, setProposal] = useState<AIProposedAction | null>(null);
   const [history, setHistory] = useState<ConversationTurn[]>([]);
   const [draft, setDraft] = useState<DraftState>({ fields: {} });
-  const navigation = useNavigation<any>();
+  const [lastSearchResults, setLastSearchResults] = useState<any[]>([]);
   const ai = useMemo(
     () => new AIService({ proxyBaseUrl: AI_PROXY_BASE_URL, assistantId: OPENAI_ASSISTANT_ID }),
     [AI_PROXY_BASE_URL, OPENAI_ASSISTANT_ID]
   );
   const handleClose = () => {
     if (onClose) onClose();
-    else if (navigation?.canGoBack?.()) navigation.goBack();
   };
 
   function tryExtractDraft(lines: string[]): DraftState | null {
@@ -80,26 +82,45 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     return cleaned;
   }
 
+  const inferAssetType = (value?: string): string | undefined => {
+    if (!value) return undefined;
+    const normalized = value.toLowerCase();
+    if (normalized.includes("road")) return "road";
+    if (normalized.includes("vehicle")) return "vehicle";
+    return undefined;
+  };
+
   const handleSend = async () => {
     if (!prompt.trim()) return;
     // simple online guard
     try {
       const online = await ai.checkOnline(3000);
       if (!online) {
-        setMessages(["You're offline. Please check your connection."]);
+        setMessages((prev) => [...prev, "You're offline. Please check your connection."]);
         return;
       }
     } catch {}
     setLoading(true);
-    setMessages([]);
+    setLoadingMessage("Processing your request...");
     setProposal(null);
+    setLastSearchResults([]);
     try {
       const text = prompt.trim();
       setPrompt("");
       const nextHistory = [...history, { role: "user" as const, content: text }];
       const res = await ai.sendPromptAndPropose(text, nextHistory);
+      setLoadingMessage(null);
       if (res.type === "text") {
-        setMessages(cleanMessages(res.messages));
+        console.log("[AIAssistant] Text response with", res.messages.length, "messages");
+        const newMessages = cleanMessages(res.messages);
+        if (newMessages.length === 0 && res.messages.length === 0) {
+          console.warn("[AIAssistant] Empty response - API may have returned empty content array");
+          setMessages([
+            "I received your request but didn't get a response. Please check the API logs or try again.",
+          ]);
+        } else {
+          setMessages(newMessages);
+        }
         const d = tryExtractDraft(res.messages);
         const promptAssetType = inferAssetType(text);
         const assistantAssetType = inferAssetType(res.messages.join(" "));
@@ -120,9 +141,15 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
         }
       } else if (res.type === "tool_proposal") {
         setProposal(res);
-        if (res.summary) setMessages(cleanMessages([res.summary]));
-        const d = tryExtractDraft(res.summary ? [res.summary] : []);
-        const summaryAssetType = inferAssetType(res.summary);
+        const toolName = res.toolCall.name.replace(/_/g, " ");
+        const defaultSummary = `Ready to ${toolName}. Review the details below and click Apply to execute.`;
+        const summary = res.summary || defaultSummary;
+        const summaryMessages = cleanMessages([summary]);
+        if (summaryMessages.length > 0) {
+          setMessages(summaryMessages);
+        }
+        const d = tryExtractDraft([summary]);
+        const summaryAssetType = inferAssetType(summary);
         if (d) {
           setDraft((prev) => ({
             assetType: d.assetType ?? prev.assetType ?? summaryAssetType,
@@ -130,13 +157,10 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
             fields: { ...prev.fields, ...d.fields },
           }));
         }
-        if (res.summary) {
-          setHistory([...nextHistory, { role: "assistant" as const, content: res.summary }]);
-        } else {
-          setHistory(nextHistory);
-        }
+        setHistory([...nextHistory, { role: "assistant" as const, content: summary }]);
       }
     } catch (e) {
+      setLoadingMessage(null);
       setMessages(["Failed to contact assistant."]);
       const text = prompt.trim();
       if (text) {
@@ -144,16 +168,26 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       }
     } finally {
       setLoading(false);
+      setLoadingMessage(null);
     }
   };
 
   const handleApply = async () => {
     if (!proposal) return;
     setLoading(true);
+    setLoadingMessage("Applying action...");
     try {
       const result = await ai.applyToolCall(proposal.toolCall);
-      if (onActionApplied) onActionApplied(result);
-      setMessages([(result.success ? "Success: " : "Error: ") + result.message]);
+      const resultMessage = (result.success ? "Success: " : "Error: ") + result.message;
+
+      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+        setLastSearchResults(result.data);
+        setMessages([resultMessage]);
+      } else {
+        setLastSearchResults([]);
+        setMessages([resultMessage]);
+      }
+
       setProposal(null);
       setHistory([
         ...history,
@@ -162,8 +196,17 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
           content: (result.success ? "Success: " : "Error: ") + result.message,
         },
       ]);
+
+      if (onActionApplied) {
+        onActionApplied(result);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("[AIAssistant] Error applying tool call:", error);
+      setMessages((prev) => [...prev, `Error: ${errorMessage}`]);
     } finally {
       setLoading(false);
+      setLoadingMessage(null);
     }
   };
 
@@ -216,24 +259,9 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     });
   }, [draft, proposal]);
 
-  // Derive a dynamic placeholder from assistant prompt or next missing field
-  const assistantPrompt = (() => {
-    if (messages.length === 0) return "";
-    const last = messages[messages.length - 1] ?? "";
-    const withoutDraft = last.split("DRAFT_JSON:")[0].trim();
-    return withoutDraft;
-  })();
-  const dynamicPlaceholder =
-    assistantPrompt || "Describe what you want to do (e.g., create, update, or find an asset...)";
+  const placeholder = "Enter your request...";
 
   const hasDraftData = Object.keys(draft.fields).length > 0;
-  const inferAssetType = (value?: string): string | undefined => {
-    if (!value) return undefined;
-    const normalized = value.toLowerCase();
-    if (normalized.includes("road")) return "road";
-    if (normalized.includes("vehicle")) return "vehicle";
-    return undefined;
-  };
   const draftTitle = draft.assetType
     ? `Draft ${draft.assetType.toLowerCase()} details`
     : "Draft details";
@@ -244,44 +272,82 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       .replace(/([a-z])([A-Z])/g, "$1 $2")
       .replace(/\b\w/g, (c) => c.toUpperCase());
 
+  const getConditionColor = (condition: string) => {
+    if (condition === AssetCondition.GOOD || condition === "good") return "success";
+    if (condition === AssetCondition.FAIR || condition === "fair") return "warning";
+    if (condition === AssetCondition.POOR || condition === "poor") return "error";
+    return "secondary";
+  };
+
+  const getTrafficVolumeColor = (volume: string) => {
+    if (volume === TrafficVolume.LOW || volume === "low") return "success";
+    if (volume === TrafficVolume.MEDIUM || volume === "medium") return "warning";
+    if (volume === TrafficVolume.HIGH || volume === "high") return "warning";
+    if (volume === TrafficVolume.VERY_HIGH || volume === "very_high") return "error";
+    return "secondary";
+  };
+
+  const formatCondition = (condition: string) => {
+    if (condition === AssetCondition.GOOD || condition === "good") return "Good";
+    if (condition === AssetCondition.FAIR || condition === "fair") return "Fair";
+    if (condition === AssetCondition.POOR || condition === "poor") return "Poor";
+    return condition;
+  };
+
   return (
     <ScrollView contentContainerStyle={[layoutStyles.p3]}>
       <View style={[layoutStyles.section]}>
         <View row spaceBetween style={{ marginBottom: spacing.xs }}>
           <Text variant="h3">AI Assistant</Text>
-          {(onClose || navigation?.canGoBack?.()) && (
-            <Button variant="secondary" onPress={handleClose}>
-              Close
+          <View row>
+            <Button
+              variant="secondary"
+              onPress={() => {
+                setPrompt("");
+                setMessages([]);
+                setProposal(null);
+                setHistory([]);
+                setDraft({ fields: {} });
+                setLastSearchResults([]);
+              }}
+              style={{ marginRight: spacing.sm }}
+            >
+              Reset
             </Button>
-          )}
-        </View>
-        <View row style={{ marginBottom: spacing.xs }}>
-          <Button
-            variant="secondary"
-            onPress={() => {
-              setPrompt("");
-              setMessages([]);
-              setProposal(null);
-              setHistory([]);
-              setDraft({ fields: {} });
-            }}
-          >
-            Reset
-          </Button>
+            {onClose && (
+              <Button variant="secondary" onPress={handleClose}>
+                Close
+              </Button>
+            )}
+          </View>
         </View>
         <Input
-          placeholder={dynamicPlaceholder}
+          placeholder={placeholder}
           value={prompt}
           onChangeText={setPrompt}
           fullWidth
           style={{ marginBottom: spacing.sm }}
+          editable={!loading}
         />
         <Button onPress={handleSend} disabled={loading || !AI_PROXY_BASE_URL}>
           {loading ? "Working..." : !AI_PROXY_BASE_URL ? "Configure AI proxy" : "Send"}
         </Button>
       </View>
 
-      {messages.length === 0 && (
+      {loading && loadingMessage && (
+        <View card style={{ marginTop: spacing.md }}>
+          <View row center style={{ marginBottom: spacing.xs }}>
+            <ActivityIndicator
+              size="small"
+              color={colors.primary.main}
+              style={{ marginRight: spacing.sm }}
+            />
+            <Text style={{ color: colors.text.secondary }}>{loadingMessage}</Text>
+          </View>
+        </View>
+      )}
+
+      {messages.length === 0 && !loading && (
         <View card style={{ marginTop: spacing.md }}>
           <Text variant="h4" style={{ marginBottom: spacing.xs }}>
             What can I do?
@@ -307,6 +373,111 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
         </View>
       )}
 
+      {lastSearchResults.length > 0 && (
+        <View style={{ marginTop: spacing.md }}>
+          <Text variant="h4" style={{ marginBottom: spacing.sm }}>
+            Results ({lastSearchResults.length})
+          </Text>
+          {lastSearchResults.map((item: any, i: number) => {
+            const isRoad = item.surfaceType !== undefined || item.trafficVolume !== undefined;
+            return (
+              <Card key={item._id || i} style={{ marginBottom: spacing.md }}>
+                <View row style={[layoutStyles.mb2]}>
+                  <View style={[layoutStyles.flex]}>
+                    <Text variant="h4" style={[layoutStyles.mb1]}>
+                      {item.name || item.qrTagId || item._id}
+                    </Text>
+                    {item.location && (
+                      <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
+                        📍 {item.location}
+                      </Text>
+                    )}
+                  </View>
+                  {item.condition && (
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Badge variant={getConditionColor(item.condition)}>
+                        Condition: {formatCondition(item.condition)}
+                      </Badge>
+                    </View>
+                  )}
+                </View>
+
+                {isRoad && (
+                  <>
+                    <View row style={[layoutStyles.mb2]}>
+                      {item.surfaceType && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Surface Type
+                          </Text>
+                          <Text variant="body">{item.surfaceType}</Text>
+                        </View>
+                      )}
+                      {item.trafficVolume && (
+                        <View style={[layoutStyles.flex]}>
+                          <Text variant="bodySmall" color="neutral">
+                            Traffic Volume
+                          </Text>
+                          <Badge variant={getTrafficVolumeColor(item.trafficVolume)} size="small">
+                            {item.trafficVolume}
+                          </Badge>
+                        </View>
+                      )}
+                    </View>
+
+                    {(item.length || item.width || item.lanes || item.speedLimit) && (
+                      <View row style={[layoutStyles.mb2]}>
+                        {item.length && (
+                          <View style={[layoutStyles.flex]}>
+                            <Text variant="bodySmall" color="neutral">
+                              Length
+                            </Text>
+                            <Text variant="body">{item.length}m</Text>
+                          </View>
+                        )}
+                        {item.width && (
+                          <View style={[layoutStyles.flex]}>
+                            <Text variant="bodySmall" color="neutral">
+                              Width
+                            </Text>
+                            <Text variant="body">{item.width}m</Text>
+                          </View>
+                        )}
+                        {item.lanes && (
+                          <View style={[layoutStyles.flex]}>
+                            <Text variant="bodySmall" color="neutral">
+                              Lanes
+                            </Text>
+                            <Text variant="body">{item.lanes}</Text>
+                          </View>
+                        )}
+                        {item.speedLimit && (
+                          <View style={[layoutStyles.flex]}>
+                            <Text variant="bodySmall" color="neutral">
+                              Speed Limit
+                            </Text>
+                            <Text variant="body">{item.speedLimit} km/h</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {item.notes && (
+                  <View style={[layoutStyles.mb2]}>
+                    <Text variant="bodySmall" color="neutral">
+                      Notes
+                    </Text>
+                    <Text variant="body">{item.notes}</Text>
+                  </View>
+                )}
+              </Card>
+            );
+          })}
+        </View>
+      )}
+
       {proposal && (
         <View card style={{ marginTop: spacing.md }}>
           <Text variant="h4" style={{ marginBottom: spacing.sm }}>
@@ -329,10 +500,12 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
             </Text>
           </View>
           <View row spaceBetween>
-            <Button variant="secondary" onPress={() => setProposal(null)}>
+            <Button variant="secondary" onPress={() => setProposal(null)} disabled={loading}>
               Cancel
             </Button>
-            <Button onPress={handleApply}>Apply</Button>
+            <Button onPress={handleApply} disabled={loading}>
+              {loading ? "Applying..." : "Apply"}
+            </Button>
           </View>
         </View>
       )}

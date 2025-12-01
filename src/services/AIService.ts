@@ -71,21 +71,32 @@ export class AIService {
 				let text = "";
 				try {
 					text = await res.text();
+					console.error("[AIService] API error response:", res.status, text.slice(0, 500));
 				} catch {}
 				const msg = `Assistant request failed (${res.status})`;
 				return { type: "text", messages: text ? [msg, text.slice(0, 300)] : [msg] };
 		}
 		const data: ProxyRunResponse = await res.json();
+		console.log("[AIService] Response received:", JSON.stringify(data).slice(0, 500));
+		
 		if (data.toolCalls && data.toolCalls.length > 0) {
-			// For now, take the first proposed action
+			console.log("[AIService] Tool calls detected:", data.toolCalls.length);
 			const first = data.toolCalls[0];
+			const toolName = first.name?.replace(/_/g, " ") || "action";
+			const defaultSummary = `I'll ${toolName} for you.`;
 			return {
 				type: "tool_proposal",
-				summary: data.content?.[0] ?? "Proposed change",
+				summary: data.content?.[0] ?? defaultSummary,
 				toolCall: first,
 			};
 		}
-		return { type: "text", messages: data.content ?? [] };
+		
+		const messages = data.content ?? [];
+		console.log("[AIService] No tool calls, returning text response with", messages.length, "messages");
+		if (messages.length === 0) {
+			console.warn("[AIService] Empty response from API - this might indicate an error");
+		}
+		return { type: "text", messages };
 		} catch (e) {
 			const message = (e instanceof Error && e.message) ? e.message : String(e);
 			// one light retry for transient network errors
@@ -100,9 +111,11 @@ export class AIService {
 					const data: ProxyRunResponse = await res.json();
 					if (data.toolCalls && data.toolCalls.length > 0) {
 						const first = data.toolCalls[0];
+						const toolName = first.name?.replace(/_/g, " ") || "action";
+						const defaultSummary = `I'll ${toolName} for you.`;
 						return {
 							type: "tool_proposal",
-							summary: data.content?.[0] ?? "Proposed change",
+							summary: data.content?.[0] ?? defaultSummary,
 							toolCall: first,
 						};
 					}

@@ -57,8 +57,7 @@ jest.mock("@/storage/realm", () => {
       const arr = records[type] || [];
       return {
         filtered: (_q: string, val: any) => ({
-          map: (fn: (x: any) => any) =>
-            arr.filter((o) => Object.values(o).includes(val)).map(fn),
+          map: (fn: (x: any) => any) => arr.filter((o) => Object.values(o).includes(val)).map(fn),
         }),
         map: (fn: (x: any) => any) => arr.map(fn),
       };
@@ -68,8 +67,7 @@ jest.mock("@/storage/realm", () => {
       const want = typeof id?.toHexString === "function" ? id.toHexString() : id;
       return (
         arr.find((o) => {
-          const got =
-            typeof o?._id?.toHexString === "function" ? o._id.toHexString() : o?._id;
+          const got = typeof o?._id?.toHexString === "function" ? o._id.toHexString() : o?._id;
           return got === want;
         }) || null
       );
