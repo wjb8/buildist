@@ -20,7 +20,7 @@ export class Asset extends Realm.Object {
   };
 
   _id!: Realm.BSON.ObjectId;
-  type!: string;
+  type!: AssetType;
   name!: string;
   condition!: AssetCondition;
   notes?: string;

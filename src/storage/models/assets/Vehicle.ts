@@ -11,10 +11,6 @@ export class Vehicle extends Asset {
   priority?: VehiclePriority;
   photoUris!: string[];
 
-  get type(): AssetType.VEHICLE {
-    return AssetType.VEHICLE;
-  }
-
   generateQRTagId(): string {
     const timestamp = Date.now().toString(36);
     return `VEH-${timestamp}`;

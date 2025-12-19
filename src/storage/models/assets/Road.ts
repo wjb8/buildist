@@ -9,10 +9,6 @@ export class Road extends Asset {
   lanes?: number;
   speedLimit?: number;
 
-  get type(): AssetType.ROAD {
-    return AssetType.ROAD;
-  }
-
   get isRoadAsset(): boolean {
     return true;
   }
