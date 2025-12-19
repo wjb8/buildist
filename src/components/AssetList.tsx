@@ -88,7 +88,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     const match = roads.filtered("qrTagId == $0", focusQrTagId)[0] as Road | undefined;
     const vmatch = vehicles.filtered("qrTagId == $0", focusQrTagId)[0] as Vehicle | undefined;
     if (match || vmatch) {
-      const idHex = ((match || vmatch)!._id as any).toHexString();
+      const idHex = (match || vmatch)!._id.toHexString();
       setExpandedAssetId(idHex);
       setHighlightedAssetId(idHex);
       setTimeout(() => setHighlightedAssetId(null), 2000);
@@ -113,9 +113,9 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     return roads.map((road) => {
       const idHex = road._id.toHexString();
       const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
-      const flags = getAttentionFlags(road as any, latestInspection, defaultAttentionConfig);
+      const flags = getAttentionFlags(road, latestInspection, defaultAttentionConfig);
       const attentionScore = computeAttentionScore(
-        road as any,
+        road,
         flags,
         latestInspection,
         defaultAttentionConfig
@@ -143,9 +143,9 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     return vehicles.map((veh) => {
       const idHex = veh._id.toHexString();
       const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
-      const flags = getAttentionFlags(veh as any, latestInspection, defaultAttentionConfig);
+      const flags = getAttentionFlags(veh, latestInspection, defaultAttentionConfig);
       const attentionScore = computeAttentionScore(
-        veh as any,
+        veh,
         flags,
         latestInspection,
         defaultAttentionConfig
@@ -606,11 +606,11 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                       )}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
-                      <Badge variant={getConditionColor(veh.condition as any)}>
+                      <Badge variant={getConditionColor(veh.condition)}>
                         {`Condition: ${
-                          (veh.condition as any) === AssetCondition.GOOD
+                          veh.condition === AssetCondition.GOOD
                             ? "Good"
-                            : (veh.condition as any) === AssetCondition.FAIR
+                            : veh.condition === AssetCondition.FAIR
                             ? "Fair"
                             : "Poor"
                         }`}

@@ -290,10 +290,12 @@ export async function applyFindAsset(args: FindAssetArgs): Promise<ToolExecution
   return { success: true, message, data: results };
 }
 
-function serializeRealmObject(obj: any) {
-  const out: Record<string, any> = {};
-  Object.keys(obj).forEach((k) => {
-    const v = (obj as any)[k];
+function serializeRealmObject(obj: unknown) {
+  if (!obj || typeof obj !== "object") return obj;
+  const record = obj as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  Object.keys(record).forEach((k) => {
+    const v = record[k];
     if (v instanceof Date) out[k] = v.toISOString();
     else if (v instanceof Realm.BSON.ObjectId) out[k] = v.toHexString();
     else out[k] = v;

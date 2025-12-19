@@ -1,20 +1,21 @@
 import { Inspection } from "@/storage/models/Inspection";
+import { Road } from "@/storage/models/assets/Road";
 import { createMockInspection, createMockRoad } from "../utils/mockDatabase";
 
 describe("Inspection Model", () => {
   let mockInspection: Inspection;
-  let mockRoad: any;
+  let mockRoad: Road;
 
   beforeEach(() => {
     mockRoad = createMockRoad();
     mockInspection = createMockInspection({
-      asset: mockRoad,
+      assetId: mockRoad._id.toHexString(),
     });
   });
 
   describe("Basic Properties", () => {
     it("should have correct basic properties", () => {
-      expect(mockInspection.assetId).toBe("road-1");
+      expect(mockInspection.assetId).toBe(mockRoad._id.toHexString());
       expect(mockInspection.inspector).toBe("John Doe");
       expect(mockInspection.description).toBe("Annual road condition assessment");
       expect(mockInspection.score).toBe(8);
@@ -31,13 +32,8 @@ describe("Inspection Model", () => {
   });
 
   describe("Relationships", () => {
-    it("should have access to the related road", () => {
-      expect(mockInspection.asset).toBe(mockRoad);
-    });
-
-    it("should be able to access road properties through relationship", () => {
-      expect(mockInspection.asset.name).toBe("Main Street");
-      expect(mockInspection.asset.condition).toBe("good");
+    it("should have the correct assetId", () => {
+      expect(mockInspection.assetId).toBe(mockRoad._id.toHexString());
     });
   });
 
@@ -115,18 +111,18 @@ describe("Inspection Model", () => {
 
   describe("Data Operations", () => {
     it("should update inspection data", async () => {
-      await mockInspection.update(() => {
+      await (mockInspection as any).update(() => {
         // Simulate updating inspection data
         mockInspection.score = 9;
         mockInspection.maintenanceNeeded = true;
       });
 
-      expect(mockInspection.update).toHaveBeenCalled();
+      expect((mockInspection as any).update).toHaveBeenCalled();
     });
 
     it("should delete inspection", async () => {
-      await mockInspection.destroyPermanently();
-      expect(mockInspection.destroyPermanently).toHaveBeenCalled();
+      await (mockInspection as any).destroyPermanently();
+      expect((mockInspection as any).destroyPermanently).toHaveBeenCalled();
     });
   });
 
@@ -139,11 +135,11 @@ describe("Inspection Model", () => {
     it("should update timestamp when modified", async () => {
       const originalUpdatedAt = mockInspection.updatedAt;
 
-      await mockInspection.update(() => {
+      await (mockInspection as any).update(() => {
         // Simulate update
       });
 
-      expect(mockInspection.update).toHaveBeenCalled();
+      expect((mockInspection as any).update).toHaveBeenCalled();
       // Note: In a real Realm model, updatedAt would be automatically updated
     });
   });

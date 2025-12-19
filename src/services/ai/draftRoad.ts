@@ -93,25 +93,22 @@ export function buildCreateRoadArgsFromDraft(fields: RoadDraftFields): CreateRoa
     trafficVolume: normalizeTrafficVolume(fields.trafficVolume)!,
   };
 
-  const optional: Array<keyof CreateRoadArgs> = [
-    "location",
-    "notes",
-    "qrTagId",
-    "length",
-    "width",
-    "lanes",
-    "speedLimit",
-  ];
+  const numberKeys = ["length", "width", "lanes", "speedLimit"] as const;
+  type NumberKey = (typeof numberKeys)[number];
+  const isNumberKey = (k: keyof CreateRoadArgs): k is NumberKey =>
+    k === "length" || k === "width" || k === "lanes" || k === "speedLimit";
+
+  const optional = ["location", "notes", "qrTagId", ...numberKeys] as const;
 
   optional.forEach((k) => {
     const raw = fields[k];
     if (raw === undefined || raw === null || raw === "") return;
-    if (k === "length" || k === "width" || k === "lanes" || k === "speedLimit") {
+    if (isNumberKey(k)) {
       const n = normalizeNumber(raw);
-      if (n !== undefined) (args as any)[k] = n;
+      if (n !== undefined) args[k] = n;
     } else {
       const s = normalizeString(raw);
-      if (s) (args as any)[k] = s;
+      if (s) args[k] = s;
     }
   });
 
@@ -159,12 +156,12 @@ export function buildUpdateRoadFieldsFromDraft(
     }
     if (k === "length" || k === "width" || k === "lanes" || k === "speedLimit") {
       const n = normalizeNumber(raw);
-      if (n !== undefined) (out as any)[k] = n;
+      if (n !== undefined) out[k] = n;
       continue;
     }
 
     const str = normalizeString(raw);
-    if (str) (out as any)[k] = str;
+    if (str && (k === "name" || k === "location" || k === "notes" || k === "qrTagId")) out[k] = str;
   }
 
   return out;

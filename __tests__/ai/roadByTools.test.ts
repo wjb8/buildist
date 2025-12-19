@@ -1,6 +1,19 @@
-import { applyCreateRoad, applyDeleteRoadBy, applyUpdateRoadBy, applyFindAsset } from "@/services/ai/handlers";
+import {
+  applyCreateRoad,
+  applyDeleteRoadBy,
+  applyUpdateRoadBy,
+  applyFindAsset,
+} from "@/services/ai/handlers";
 import { AssetCondition } from "@/types/asset";
 import { RoadSurfaceType, TrafficVolume } from "@/types/road";
+
+function assertArray(value: unknown): asserts value is unknown[] {
+  if (!Array.isArray(value)) throw new Error("Expected data to be an array");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object";
+}
 
 describe("Road selector-based tools", () => {
   it("update_road_by updates a single matched road", async () => {
@@ -20,11 +33,17 @@ describe("Road selector-based tools", () => {
     });
     expect(updateRes.success).toBe(true);
 
-    const findRes = await applyFindAsset({ by: "name", value: "Main Street", type: "Road", limit: 1 });
+    const findRes = await applyFindAsset({
+      by: "name",
+      value: "Main Street",
+      type: "Road",
+      limit: 1,
+    });
     expect(findRes.success).toBe(true);
-    expect(Array.isArray(findRes.data)).toBe(true);
-    const found = (findRes.data as any[])[0];
-    expect(found.condition).toBe(AssetCondition.POOR);
+    const data = findRes.data;
+    assertArray(data);
+    const found = data[0];
+    expect(isRecord(found) ? found.condition : undefined).toBe(AssetCondition.POOR);
   });
 
   it("delete_road_by deletes a single matched road", async () => {
@@ -63,9 +82,8 @@ describe("Road selector-based tools", () => {
       fields: { condition: AssetCondition.POOR },
     });
     expect(res.success).toBe(false);
-    expect(Array.isArray(res.data)).toBe(true);
-    expect((res.data as any[]).length).toBeGreaterThan(1);
+    const data = res.data;
+    assertArray(data);
+    expect(data.length).toBeGreaterThan(1);
   });
 });
-
-

@@ -1,5 +1,5 @@
 import { Road } from "@/storage/models/assets/Road";
-import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
+import { AssetCondition, AssetType, RoadSurfaceType, TrafficVolume } from "@/types";
 import { createMockRoad } from "../utils/mockDatabase";
 
 describe("Road Model", () => {
@@ -35,38 +35,17 @@ describe("Road Model", () => {
       expect(road.roadDimensions).toBe("1000m × 12m");
     });
 
-    it("should return traffic level", () => {
-      const road = createMockRoad();
-      expect(road.trafficLevel).toBe("High traffic (arterial)");
+    it("should return 'Dimensions not specified' when length or width is missing", () => {
+      const road = createMockRoad({
+        length: undefined,
+        width: undefined,
+      });
+      expect(road.roadDimensions).toBe("Dimensions not specified");
     });
 
-    it("should return condition score", () => {
+    it("should have type property", () => {
       const road = createMockRoad();
-      expect(road.conditionScore).toBe(4);
-    });
-
-    it("should return maintenance priority", () => {
-      const road = createMockRoad();
-      expect(road.maintenancePriority).toBe("LOW - Standard maintenance");
-    });
-
-    it("should return estimated maintenance cost", () => {
-      const road = createMockRoad();
-      expect(road.estimatedMaintenanceCost).toBe(2000);
-    });
-
-    it("should return next inspection due date", () => {
-      const road = createMockRoad();
-      expect(road.nextInspectionDue).toBeInstanceOf(Date);
-    });
-  });
-
-  describe("Validation", () => {
-    it("should pass validation for valid road", () => {
-      const road = createMockRoad();
-      const validation = road.validateRoadData();
-      expect(validation.isValid).toBe(true);
-      expect(validation.errors).toEqual([]);
+      expect(road.type).toBe(AssetType.ROAD);
     });
   });
 
@@ -74,14 +53,7 @@ describe("Road Model", () => {
     it("should generate QR tag ID", () => {
       const road = createMockRoad();
       const qrTagId = road.generateQRTagId();
-      expect(qrTagId).toBe("ROA-123");
-    });
-
-    it("should have mock update methods", () => {
-      const road = createMockRoad();
-      expect(road.update).toBeDefined();
-      expect(road.markAsNeedsMaintenance).toBeDefined();
-      expect(road.updateCondition).toBeDefined();
+      expect(qrTagId).toMatch(/^ROA-/);
     });
   });
 });

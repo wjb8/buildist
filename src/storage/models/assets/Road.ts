@@ -1,5 +1,5 @@
 import Realm from "realm";
-import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
+import { AssetCondition, AssetType, RoadSurfaceType, TrafficVolume } from "@/types";
 
 export class Road extends Realm.Object {
   static schema = {
@@ -39,6 +39,10 @@ export class Road extends Realm.Object {
   createdAt!: Date;
   updatedAt!: Date;
   synced!: boolean;
+
+  get type(): AssetType.ROAD {
+    return AssetType.ROAD;
+  }
 
   get isRoadAsset(): boolean {
     return true;

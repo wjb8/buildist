@@ -24,6 +24,10 @@ interface AIAssistantProps {
   onClose?: () => void;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object";
+}
+
 function cleanMessages(raw: string[]): string[] {
   const cleaned: string[] = [];
   for (const msg of raw) {
@@ -46,12 +50,9 @@ function tryExtractDraft(lines: string[]): Record<string, unknown> | null {
     const jsonPart = line.slice(idx + "DRAFT_JSON:".length).trim();
     try {
       const parsed = JSON.parse(jsonPart);
-      if (parsed && typeof parsed === "object") {
-        const fieldsCandidate =
-          (parsed as any).fields && typeof (parsed as any).fields === "object"
-            ? (parsed as any).fields
-            : parsed;
-        return fieldsCandidate as Record<string, unknown>;
+      if (isRecord(parsed)) {
+        const fieldsCandidate = isRecord(parsed.fields) ? parsed.fields : parsed;
+        return fieldsCandidate;
       }
     } catch {}
   }
@@ -69,14 +70,14 @@ function inferIntent(value?: string): RoadDraftFields["intent"] | undefined {
   return undefined;
 }
 
-function displayProposalArgs(toolCall: { name: string; arguments: any }) {
+function displayProposalArgs(toolCall: ToolCall<unknown>) {
   const args = toolCall.arguments;
-  if (!args || typeof args !== "object") return args;
+  if (!isRecord(args)) return args;
 
-  if (toolCall.name === "update_road" && typeof (args as any)._id === "string") {
+  if (toolCall.name === "update_road" && typeof args._id === "string") {
     return { ...args, _id: "<selected road>" };
   }
-  if (toolCall.name === "delete_asset" && typeof (args as any)._id === "string") {
+  if (toolCall.name === "delete_asset" && typeof args._id === "string") {
     return { ...args, _id: "<selected road>" };
   }
   return args;
@@ -401,7 +402,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
             ]}
           >
             <Text variant="bodySmall" style={{ color: colors.text.secondary }}>
-              {JSON.stringify(displayProposalArgs(proposal.toolCall as any), null, 2)}
+              {JSON.stringify(displayProposalArgs(proposal.toolCall), null, 2)}
             </Text>
           </View>
           <View row spaceBetween>

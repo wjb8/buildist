@@ -1,5 +1,5 @@
 import Realm from "realm";
-import { AssetCondition } from "@/types/asset";
+import { AssetCondition, AssetType } from "@/types/asset";
 import { VehiclePriority } from "@/types/vehicle";
 
 export class Vehicle extends Realm.Object {
@@ -42,6 +42,10 @@ export class Vehicle extends Realm.Object {
   createdAt!: Date;
   updatedAt!: Date;
   synced!: boolean;
+
+  get type(): AssetType.VEHICLE {
+    return AssetType.VEHICLE;
+  }
 
   generateQRTagId(): string {
     const timestamp = Date.now().toString(36);
