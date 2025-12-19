@@ -7,7 +7,7 @@ import {
 	applyUpdateRoadBy,
 } from "./ai/handlers";
 import { ToolCall, ToolName } from "./ai/toolSchemas";
-import { AssetCondition } from "@/types/asset";
+import { AssetCondition, AssetType } from "@/types/asset";
 import { RoadSurfaceType, TrafficVolume } from "@/types/road";
 import type {
 	CreateRoadArgs,
@@ -168,8 +168,10 @@ function parseUpdateRoadByArgs(value: unknown): UpdateRoadByArgs | null {
 function parseDeleteAssetArgs(value: unknown): DeleteAssetArgs | null {
 	if (!isRecord(value)) return null;
 	if (typeof value._id !== "string") return null;
-	if (value.type !== "Road" && value.type !== "Vehicle") return null;
-	return { _id: value._id, type: value.type };
+	if (typeof value.type !== "string") return null;
+	const assetType = value.type as AssetType;
+	if (!Object.values(AssetType).includes(assetType)) return null;
+	return { _id: value._id, type: assetType };
 }
 
 function parseDeleteRoadByArgs(value: unknown): DeleteRoadByArgs | null {
@@ -186,12 +188,16 @@ function parseFindAssetArgs(value: unknown): FindAssetArgs | null {
 	const by = value.by;
 	if (by !== "id" && by !== "name" && by !== "nameContains" && by !== "qrTagId" && by !== "search") return null;
 	if (typeof value.value !== "string") return null;
-	if (value.type !== undefined && value.type !== "Road" && value.type !== "Vehicle") return null;
+	if (value.type !== undefined) {
+		if (typeof value.type !== "string") return null;
+		const assetType = value.type as AssetType;
+		if (!Object.values(AssetType).includes(assetType)) return null;
+	}
 	if (value.limit !== undefined && !isFiniteNumber(value.limit)) return null;
 	return {
 		by,
 		value: value.value,
-		type: value.type as "Road" | "Vehicle" | undefined,
+		type: value.type as AssetType | undefined,
 		limit: value.limit as number | undefined,
 	};
 }
@@ -255,9 +261,10 @@ export class AIService {
 			const first = data.toolCalls[0];
 			const toolName = first.name?.replace(/_/g, " ") || "action";
 			const defaultSummary = `I'll ${toolName} for you.`;
+			const contentSummary = data.content?.[0]?.trim();
 			return {
 				type: "tool_proposal",
-				summary: data.content?.[0] ?? defaultSummary,
+				summary: contentSummary || defaultSummary,
 				toolCall: first,
 			};
 		}

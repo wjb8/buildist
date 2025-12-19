@@ -41,15 +41,17 @@ export interface DeleteRoadByArgs {
   limit?: number;
 }
 
+import { AssetType } from "@/types/asset";
+
 export interface DeleteAssetArgs {
   _id: string;
-  type: "Road" | "Vehicle";
+  type: AssetType;
 }
 
 export interface FindAssetArgs {
   by: "id" | "name" | "nameContains" | "qrTagId" | "search";
   value: string;
-  type?: "Road" | "Vehicle";
+  type?: AssetType;
   limit?: number;
 }
 

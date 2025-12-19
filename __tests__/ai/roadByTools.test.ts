@@ -4,7 +4,7 @@ import {
   applyUpdateRoadBy,
   applyFindAsset,
 } from "@/services/ai/handlers";
-import { AssetCondition } from "@/types/asset";
+import { AssetCondition, AssetType } from "@/types/asset";
 import { RoadSurfaceType, TrafficVolume } from "@/types/road";
 
 function assertArray(value: unknown): asserts value is unknown[] {
@@ -36,7 +36,7 @@ describe("Road selector-based tools", () => {
     const findRes = await applyFindAsset({
       by: "name",
       value: "Main Street",
-      type: "Road",
+      type: AssetType.ROAD,
       limit: 1,
     });
     expect(findRes.success).toBe(true);
@@ -57,7 +57,11 @@ describe("Road selector-based tools", () => {
     const del = await applyDeleteRoadBy({ by: "name", value: "Cedar Lane" });
     expect(del.success).toBe(true);
 
-    const findRes = await applyFindAsset({ by: "name", value: "Cedar Lane", type: "Road" });
+    const findRes = await applyFindAsset({
+      by: "name",
+      value: "Cedar Lane",
+      type: AssetType.ROAD,
+    });
     expect(findRes.success).toBe(true);
     expect(findRes.data).toEqual([]);
   });

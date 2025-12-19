@@ -25,8 +25,7 @@ import { Card } from "./Card";
 import { colors, layoutStyles, spacing, inputStyles } from "@/styles";
 import Select from "./Select";
 import { AssetCondition } from "@/types";
-import { Road } from "@/storage/models/assets/Road";
-import { Vehicle } from "@/storage/models/assets/Vehicle";
+import { Asset } from "@/storage/models/assets/Asset";
 
 interface NewInspectionFormProps {
   assetId: string;
@@ -133,17 +132,11 @@ export default function NewInspectionForm({ assetId, onCreated }: NewInspectionF
 
         // Update asset condition based on inspection score
         const objId = new Realm.BSON.ObjectId(assetId);
-        const road = realm.objectForPrimaryKey<Road>("Road", objId);
-        if (road && road.condition !== newCondition) {
-          road.condition = newCondition;
-          road.updatedAt = now;
-          road.synced = false;
-        }
-        const vehicle = realm.objectForPrimaryKey<Vehicle>("Vehicle", objId);
-        if (vehicle && vehicle.condition !== newCondition) {
-          vehicle.condition = newCondition;
-          vehicle.updatedAt = now;
-          vehicle.synced = false;
+        const asset = realm.objectForPrimaryKey<Asset>("Asset", objId);
+        if (asset && asset.condition !== newCondition) {
+          asset.condition = newCondition;
+          asset.updatedAt = now;
+          asset.synced = false;
         }
       });
 

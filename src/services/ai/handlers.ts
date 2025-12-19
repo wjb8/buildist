@@ -8,6 +8,7 @@ import {
   UpdateRoadArgs,
   UpdateRoadByArgs,
 } from "./toolSchemas";
+import { AssetType } from "@/types/asset";
 
 export interface ToolExecutionResult {
   success: boolean;
@@ -33,19 +34,14 @@ export async function applyCreateRoad(args: CreateRoadArgs): Promise<ToolExecuti
   let createdId: Realm.BSON.ObjectId | null = null;
   realm.write(() => {
     createdId = new Realm.BSON.ObjectId();
-    realm.create("Road", {
+    realm.create("Asset", {
       _id: createdId,
+      type: AssetType.ROAD,
       name: args.name,
       location: args.location,
       condition: args.condition,
       notes: args.notes,
       qrTagId: args.qrTagId ?? undefined,
-      surfaceType: args.surfaceType,
-      trafficVolume: args.trafficVolume,
-      length: args.length,
-      width: args.width,
-      lanes: args.lanes,
-      speedLimit: args.speedLimit,
       createdAt: new Date(),
       updatedAt: new Date(),
       synced: false,
@@ -58,12 +54,21 @@ export async function applyCreateRoad(args: CreateRoadArgs): Promise<ToolExecuti
 export async function applyUpdateRoad(args: UpdateRoadArgs): Promise<ToolExecutionResult> {
   const realm = await getRealm();
   const objectId = new Realm.BSON.ObjectId(args._id);
-  const road = realm.objectForPrimaryKey<any>("Road", objectId);
-  if (!road) {
-    return { success: false, message: "Road not found" };
+  const asset = realm.objectForPrimaryKey<any>("Asset", objectId);
+  if (!asset) {
+    return { success: false, message: "Asset not found" };
+  }
+  if (asset.type !== AssetType.ROAD) {
+    return { success: false, message: "Asset is not a road" };
   }
   realm.write(() => {
-    Object.assign(road, { ...args.fields, updatedAt: new Date() });
+    if (args.fields.name !== undefined) asset.name = args.fields.name;
+    if (args.fields.location !== undefined) asset.location = args.fields.location;
+    if (args.fields.condition !== undefined) asset.condition = args.fields.condition;
+    if (args.fields.notes !== undefined) asset.notes = args.fields.notes;
+    if (args.fields.qrTagId !== undefined) asset.qrTagId = args.fields.qrTagId;
+    asset.updatedAt = new Date();
+    asset.synced = false;
   });
   return { success: true, message: "Road updated", data: { _id: args._id } };
 }
@@ -74,51 +79,63 @@ function fuzzyMatchField(value: any, searchTerm: string): boolean {
   return str.includes(searchTerm.toLowerCase());
 }
 
-function matchesRoadFuzzySearch(obj: any, searchTerm: string): boolean {
+function matchesAssetFuzzySearch(obj: any, searchTerm: string): boolean {
   return (
     fuzzyMatchField(obj.name, searchTerm) ||
     fuzzyMatchField(obj.location, searchTerm) ||
     fuzzyMatchField(obj.condition, searchTerm) ||
     fuzzyMatchField(obj.notes, searchTerm) ||
     fuzzyMatchField(obj.qrTagId, searchTerm) ||
-    fuzzyMatchField(obj.surfaceType, searchTerm) ||
-    fuzzyMatchField(obj.trafficVolume, searchTerm) ||
-    (obj.length !== undefined && fuzzyMatchField(String(obj.length), searchTerm)) ||
-    (obj.width !== undefined && fuzzyMatchField(String(obj.width), searchTerm)) ||
-    (obj.lanes !== undefined && fuzzyMatchField(String(obj.lanes), searchTerm)) ||
-    (obj.speedLimit !== undefined && fuzzyMatchField(String(obj.speedLimit), searchTerm))
+    fuzzyMatchField(obj.type, searchTerm)
   );
 }
 
-function pickRoadCandidates(
+function pickAssetCandidates(
   realm: Realm,
-  args: { by: UpdateRoadByArgs["by"]; value: string; limit?: number }
+  args: { by: UpdateRoadByArgs["by"]; value: string; limit?: number; type?: AssetType }
 ): any[] {
-  const allResults = realm.objects<any>("Road");
+  const allResults = realm.objects<any>("Asset");
   const all = toArray<any>(allResults);
 
   let matches: any[] = [];
   if (args.by === "id") {
     try {
       const objectId = new Realm.BSON.ObjectId(args.value);
-      const obj = realm.objectForPrimaryKey<any>("Road", objectId);
-      if (obj) matches = [obj];
+      const obj = realm.objectForPrimaryKey<any>("Asset", objectId);
+      if (obj && (!args.type || obj.type === args.type)) matches = [obj];
     } catch {
       matches = [];
     }
   } else if (args.by === "name") {
-    matches = all.filter((r) => typeof r?.name === "string" && r.name === args.value);
+    matches = all.filter(
+      (r) =>
+        typeof r?.name === "string" &&
+        r.name === args.value &&
+        (!args.type || r.type === args.type)
+    );
   } else if (args.by === "nameContains") {
     const q = args.value.toLowerCase();
-    matches = all.filter((r) => typeof r?.name === "string" && r.name.toLowerCase().includes(q));
+    matches = all.filter(
+      (r) =>
+        typeof r?.name === "string" &&
+        r.name.toLowerCase().includes(q) &&
+        (!args.type || r.type === args.type)
+    );
   } else if (args.by === "qrTagId") {
-    matches = all.filter((r) => typeof r?.qrTagId === "string" && r.qrTagId === args.value);
+    matches = all.filter(
+      (r) =>
+        typeof r?.qrTagId === "string" &&
+        r.qrTagId === args.value &&
+        (!args.type || r.type === args.type)
+    );
   } else if (args.by === "search") {
     const q = (args.value || "").trim();
     if (!q) {
-      matches = all;
+      matches = all.filter((r) => !args.type || r.type === args.type);
     } else {
-      matches = all.filter((r) => matchesRoadFuzzySearch(r, q));
+      matches = all.filter(
+        (r) => matchesAssetFuzzySearch(r, q) && (!args.type || r.type === args.type)
+      );
     }
   }
 
@@ -130,7 +147,7 @@ function pickRoadCandidates(
 
 export async function applyUpdateRoadBy(args: UpdateRoadByArgs): Promise<ToolExecutionResult> {
   const realm = await getRealm();
-  const candidates = pickRoadCandidates(realm, args);
+  const candidates = pickAssetCandidates(realm, { ...args, type: AssetType.ROAD });
 
   if (candidates.length === 0) {
     return { success: false, message: "No matching road found", data: [] };
@@ -154,7 +171,13 @@ export async function applyUpdateRoadBy(args: UpdateRoadByArgs): Promise<ToolExe
 
   const target = candidates[0];
   realm.write(() => {
-    Object.assign(target, { ...args.fields, updatedAt: new Date(), synced: false });
+    if (args.fields.name !== undefined) target.name = args.fields.name;
+    if (args.fields.location !== undefined) target.location = args.fields.location;
+    if (args.fields.condition !== undefined) target.condition = args.fields.condition;
+    if (args.fields.notes !== undefined) target.notes = args.fields.notes;
+    if (args.fields.qrTagId !== undefined) target.qrTagId = args.fields.qrTagId;
+    target.updatedAt = new Date();
+    target.synced = false;
   });
 
   const idValue =
@@ -165,19 +188,19 @@ export async function applyUpdateRoadBy(args: UpdateRoadByArgs): Promise<ToolExe
 export async function applyDeleteAsset(args: DeleteAssetArgs): Promise<ToolExecutionResult> {
   const realm = await getRealm();
   const objectId = new Realm.BSON.ObjectId(args._id);
-  const obj = realm.objectForPrimaryKey<any>(args.type, objectId);
+  const obj = realm.objectForPrimaryKey<any>("Asset", objectId);
   if (!obj) {
-    return { success: false, message: `${args.type} not found` };
+    return { success: false, message: "Asset not found" };
   }
   realm.write(() => {
     realm.delete(obj);
   });
-  return { success: true, message: `${args.type} deleted`, data: { _id: args._id } };
+  return { success: true, message: "Asset deleted", data: { _id: args._id } };
 }
 
 export async function applyDeleteRoadBy(args: DeleteRoadByArgs): Promise<ToolExecutionResult> {
   const realm = await getRealm();
-  const candidates = pickRoadCandidates(realm, args);
+  const candidates = pickAssetCandidates(realm, { ...args, type: AssetType.ROAD });
 
   if (candidates.length === 0) {
     return { success: false, message: "No matching road found", data: [] };
@@ -202,84 +225,56 @@ export async function applyDeleteRoadBy(args: DeleteRoadByArgs): Promise<ToolExe
   return { success: true, message: "Road deleted", data: { _id: idValue } };
 }
 
-function matchesFuzzySearch(obj: any, searchTerm: string, assetType: "Road" | "Vehicle"): boolean {
-  const searchLower = searchTerm.toLowerCase();
-
-  if (assetType === "Road") {
-    return (
-      fuzzyMatchField(obj.name, searchTerm) ||
-      fuzzyMatchField(obj.location, searchTerm) ||
-      fuzzyMatchField(obj.condition, searchTerm) ||
-      fuzzyMatchField(obj.notes, searchTerm) ||
-      fuzzyMatchField(obj.qrTagId, searchTerm) ||
-      fuzzyMatchField(obj.surfaceType, searchTerm) ||
-      fuzzyMatchField(obj.trafficVolume, searchTerm) ||
-      (obj.length !== undefined && fuzzyMatchField(String(obj.length), searchTerm)) ||
-      (obj.width !== undefined && fuzzyMatchField(String(obj.width), searchTerm)) ||
-      (obj.lanes !== undefined && fuzzyMatchField(String(obj.lanes), searchTerm)) ||
-      (obj.speedLimit !== undefined && fuzzyMatchField(String(obj.speedLimit), searchTerm))
-    );
-  } else if (assetType === "Vehicle") {
-    return (
-      fuzzyMatchField(obj.name, searchTerm) ||
-      fuzzyMatchField(obj.identifier, searchTerm) ||
-      fuzzyMatchField(obj.location, searchTerm) ||
-      fuzzyMatchField(obj.condition, searchTerm) ||
-      fuzzyMatchField(obj.notes, searchTerm) ||
-      fuzzyMatchField(obj.qrTagId, searchTerm) ||
-      fuzzyMatchField(obj.priority, searchTerm) ||
-      (obj.mileage !== undefined && fuzzyMatchField(String(obj.mileage), searchTerm)) ||
-      (obj.hours !== undefined && fuzzyMatchField(String(obj.hours), searchTerm))
-    );
-  }
-  return false;
-}
-
 export async function applyFindAsset(args: FindAssetArgs): Promise<ToolExecutionResult> {
   const realm = await getRealm();
   let results: any[] = [];
-  const types = args.type ? ([args.type] as const) : ["Road" as const, "Vehicle" as const];
-  console.log("[applyFindAsset] Search args:", JSON.stringify(args));
-  types.forEach((t) => {
-    if (args.by === "id") {
-      try {
-        const objectId = new Realm.BSON.ObjectId(args.value);
-        const obj = realm.objectForPrimaryKey<any>(t, objectId);
-        if (obj) results.push(serializeRealmObject(obj));
-      } catch {}
-    } else if (args.by === "name") {
-      const found = realm.objects<any>(t).filtered("name == $0", args.value);
-      results.push(...found.map(serializeRealmObject));
-    } else if (args.by === "nameContains") {
-      const all = realm.objects<any>(t);
-      const filtered = Array.from(all).filter(
+  const allAssets = realm.objects<any>("Asset");
+  const all = toArray<any>(allAssets);
+
+  let filtered: any[] = [];
+
+  if (args.type) {
+    filtered = all.filter((a) => a.type === args.type);
+  } else {
+    filtered = all;
+  }
+
+  if (args.by === "id") {
+    try {
+      const objectId = new Realm.BSON.ObjectId(args.value);
+      const obj = realm.objectForPrimaryKey<any>("Asset", objectId);
+      if (obj && (!args.type || obj.type === args.type)) {
+        results.push(serializeRealmObject(obj));
+      }
+    } catch {}
+  } else if (args.by === "name") {
+    results = filtered
+      .filter((obj) => typeof obj?.name === "string" && obj.name === args.value)
+      .map(serializeRealmObject);
+  } else if (args.by === "nameContains") {
+    results = filtered
+      .filter(
         (obj) =>
           obj.name &&
           typeof obj.name === "string" &&
           obj.name.toLowerCase().includes(args.value.toLowerCase())
-      );
-      results.push(...filtered.map(serializeRealmObject));
-    } else if (args.by === "qrTagId") {
-      const found = realm.objects<any>(t).filtered("qrTagId == $0", args.value);
-      results.push(...found.map(serializeRealmObject));
-    } else if (args.by === "search") {
-      const all = realm.objects<any>(t);
-      const totalCount = all.length;
-      console.log(
-        `[applyFindAsset] Searching ${t}: total=${totalCount}, searchValue="${args.value}"`
-      );
-      if (!args.value || args.value.trim() === "") {
-        console.log(`[applyFindAsset] Empty search value - returning all ${totalCount} ${t} items`);
-        results.push(...Array.from(all).map(serializeRealmObject));
-      } else {
-        const filtered = Array.from(all).filter((obj) => matchesFuzzySearch(obj, args.value, t));
-        console.log(
-          `[applyFindAsset] Fuzzy search matched ${filtered.length} of ${totalCount} ${t} items`
-        );
-        results.push(...filtered.map(serializeRealmObject));
-      }
+      )
+      .map(serializeRealmObject);
+  } else if (args.by === "qrTagId") {
+    results = filtered
+      .filter((obj) => typeof obj?.qrTagId === "string" && obj.qrTagId === args.value)
+      .map(serializeRealmObject);
+  } else if (args.by === "search") {
+    const q = (args.value || "").trim();
+    if (!q) {
+      results = filtered.map(serializeRealmObject);
+    } else {
+      results = filtered
+        .filter((obj) => matchesAssetFuzzySearch(obj, q))
+        .map(serializeRealmObject);
     }
-  });
+  }
+
   if (args.limit && args.limit > 0) {
     results = results.slice(0, args.limit);
   }

@@ -15,7 +15,6 @@ import AssetList from "./AssetList";
 import QRScanner from "./QRScanner";
 import AIAssistant from "./AIAssistant";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
-import { Road } from "@/storage/models/assets/Road";
 import { QRService } from "@/services/QRService";
 import { forceReseedDemoData } from "@/utils/demoData";
 

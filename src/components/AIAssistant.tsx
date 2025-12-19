@@ -11,6 +11,7 @@ import { AI_PROXY_BASE_URL, OPENAI_ASSISTANT_ID } from "../config/ai";
 import { AIProposedAction, AIService, ConversationTurn } from "../services/AIService";
 import type { ToolCall } from "../services/ai/toolSchemas";
 import type { CreateRoadArgs } from "../services/ai/toolSchemas";
+import { AssetType } from "../types/asset";
 import {
   RoadDraftFields,
   buildCreateRoadArgsFromDraft,
@@ -137,9 +138,10 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
       if (res.type === "tool_proposal") {
         setProposal(res);
-        const summaryLines = cleanMessages([res.summary || "Ready. Review the details and Apply."]);
+        const normalizedSummary = res.summary || "Ready. Review the details and Apply.";
+        const summaryLines = cleanMessages([normalizedSummary]);
         if (summaryLines.length > 0) setMessages(summaryLines);
-        setHistory([...nextHistory, { role: "assistant" as const, content: res.summary }]);
+        setHistory([...nextHistory, { role: "assistant" as const, content: normalizedSummary }]);
         return;
       }
 
@@ -222,9 +224,14 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       return;
     }
 
+    const checkForRenameIntent = (text: string): boolean => {
+      const lower = text.toLowerCase();
+      return lower.includes("rename") || lower.includes("name to");
+    };
+
     const includeName =
-      lastUserPrompt.toLowerCase().includes("rename") ||
-      lastUserPrompt.toLowerCase().includes("name to");
+      checkForRenameIntent(lastUserPrompt) ||
+      history.some((turn) => turn.role === "user" && checkForRenameIntent(turn.content));
     const fields = buildUpdateRoadFieldsFromDraft(draftFields, { includeName });
     if (Object.keys(fields).length === 0) {
       setMessages([
@@ -249,7 +256,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     setProposal({
       type: "tool_proposal",
       summary: "Ready to delete the selected road. Review and Apply.",
-      toolCall: { name: "delete_asset", arguments: { _id: id, type: "Road" } },
+      toolCall: { name: "delete_asset", arguments: { _id: id, type: AssetType.ROAD } },
     });
   };
 

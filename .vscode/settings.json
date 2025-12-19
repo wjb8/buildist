@@ -1,9 +1,4 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
-}
-
-{
   "workbench.colorCustomizations": {
     "activityBar.activeBackground": "#ea8f37",
     "activityBar.background": "#ea8f37",
@@ -23,5 +18,7 @@
     "titleBar.inactiveBackground": "#d7751799",
     "titleBar.inactiveForeground": "#15202b99"
   },
-  "peacock.remoteColor": "#d77517"
+  "peacock.remoteColor": "#d77517",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
 }
