@@ -41,12 +41,36 @@ jest.mock("openai", () => ({
   })),
 }));
 
+// Mock Expo vector icons (ESM) for Jest
+jest.mock("@expo/vector-icons", () => {
+  const React = require("react");
+  const MockIcon = (props: any) => React.createElement("Icon", props, null);
+  return {
+    __esModule: true,
+    MaterialIcons: MockIcon,
+    FontAwesome: MockIcon,
+    AntDesign: MockIcon,
+    Ionicons: MockIcon,
+  };
+});
+
 // Force Jest to use our manual mock for the native Realm module
 jest.mock("realm");
 
 // Mock getRealm to avoid loading native bindings during tests
 jest.mock("@/storage/realm", () => {
   const records: Record<string, any[]> = { Road: [], Vehicle: [] };
+
+  const makeResults = (arr: any[]) => {
+    const results = [...arr];
+    (results as any).filtered = (_q: string, val: any) => {
+      const filtered = arr.filter((o) => Object.values(o).includes(val));
+      return makeResults(filtered);
+    };
+    (results as any).map = (fn: (x: any) => any) => Array.prototype.map.call(results, fn);
+    return results;
+  };
+
   const realm = {
     write: (fn: () => void) => fn(),
     create: (type: string, obj: any) => {
@@ -55,12 +79,7 @@ jest.mock("@/storage/realm", () => {
     },
     objects: (type: string) => {
       const arr = records[type] || [];
-      return {
-        filtered: (_q: string, val: any) => ({
-          map: (fn: (x: any) => any) => arr.filter((o) => Object.values(o).includes(val)).map(fn),
-        }),
-        map: (fn: (x: any) => any) => arr.map(fn),
-      };
+      return makeResults(arr);
     },
     objectForPrimaryKey: (type: string, id: any) => {
       const arr = records[type] || [];
@@ -72,7 +91,12 @@ jest.mock("@/storage/realm", () => {
         }) || null
       );
     },
-    delete: (_obj: any) => {},
+    delete: (obj: any) => {
+      const typeKeys = Object.keys(records);
+      for (const t of typeKeys) {
+        records[t] = (records[t] || []).filter((o) => o !== obj);
+      }
+    },
   };
   return { getRealm: jest.fn().mockResolvedValue(realm) };
 });

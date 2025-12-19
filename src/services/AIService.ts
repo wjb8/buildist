@@ -1,4 +1,11 @@
-import { applyCreateRoad, applyDeleteAsset, applyFindAsset, applyUpdateRoad } from "./ai/handlers";
+import {
+	applyCreateRoad,
+	applyDeleteAsset,
+	applyDeleteRoadBy,
+	applyFindAsset,
+	applyUpdateRoad,
+	applyUpdateRoadBy,
+} from "./ai/handlers";
 import { ToolCall, ToolName } from "./ai/toolSchemas";
 
 interface AIServiceOptions {
@@ -134,8 +141,12 @@ export class AIService {
 				return await applyCreateRoad(call.arguments as any);
 			case "update_road":
 				return await applyUpdateRoad(call.arguments as any);
+			case "update_road_by":
+				return await applyUpdateRoadBy(call.arguments as any);
 			case "delete_asset":
 				return await applyDeleteAsset(call.arguments as any);
+			case "delete_road_by":
+				return await applyDeleteRoadBy(call.arguments as any);
 			case "find_asset":
 				return await applyFindAsset(call.arguments as any);
 			default:

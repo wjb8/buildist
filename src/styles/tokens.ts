@@ -115,7 +115,7 @@ export const typographyTokens = {
     relaxed: 1.6,
     loose: 1.8,
   },
-};
+} as const;
 
 export const spacingTokens = {
   // Base spacing unit is 4px
