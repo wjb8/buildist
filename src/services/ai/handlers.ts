@@ -192,6 +192,9 @@ export async function applyDeleteAsset(args: DeleteAssetArgs): Promise<ToolExecu
   if (!obj) {
     return { success: false, message: "Asset not found" };
   }
+  if (obj.type !== args.type) {
+    return { success: false, message: `Asset type mismatch: expected ${args.type}, found ${obj.type}` };
+  }
   realm.write(() => {
     realm.delete(obj);
   });

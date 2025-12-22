@@ -59,7 +59,7 @@ jest.mock("realm");
 
 // Mock getRealm to avoid loading native bindings during tests
 jest.mock("@/storage/realm", () => {
-  const records: Record<string, unknown[]> = { Road: [], Vehicle: [] };
+  const records: Record<string, unknown[]> = { Asset: [], Inspection: [] };
 
   type MockResults<T> = T[] & {
     filtered: (_q: string, val: unknown) => MockResults<T>;

@@ -1,21 +1,21 @@
 import { Inspection } from "@/storage/models/Inspection";
-import { Road } from "@/storage/models/assets/Road";
-import { createMockInspection, createMockRoad } from "../utils/mockDatabase";
+import { Asset } from "@/storage/models/assets/Asset";
+import { createMockInspection, createMockAsset } from "../utils/mockDatabase";
 
 describe("Inspection Model", () => {
   let mockInspection: Inspection;
-  let mockRoad: Road;
+  let mockAsset: Asset;
 
   beforeEach(() => {
-    mockRoad = createMockRoad();
+    mockAsset = createMockAsset();
     mockInspection = createMockInspection({
-      assetId: mockRoad._id.toHexString(),
+      assetId: mockAsset._id.toHexString(),
     });
   });
 
   describe("Basic Properties", () => {
     it("should have correct basic properties", () => {
-      expect(mockInspection.assetId).toBe(mockRoad._id.toHexString());
+      expect(mockInspection.assetId).toBe(mockAsset._id.toHexString());
       expect(mockInspection.inspector).toBe("John Doe");
       expect(mockInspection.description).toBe("Annual road condition assessment");
       expect(mockInspection.score).toBe(8);
@@ -33,7 +33,7 @@ describe("Inspection Model", () => {
 
   describe("Relationships", () => {
     it("should have the correct assetId", () => {
-      expect(mockInspection.assetId).toBe(mockRoad._id.toHexString());
+      expect(mockInspection.assetId).toBe(mockAsset._id.toHexString());
     });
   });
 

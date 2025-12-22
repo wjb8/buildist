@@ -1,3 +1,10 @@
+/**
+ * Road Model (Phase 1)
+ *
+ * Plain TypeScript class extending Asset for type safety and future extensibility.
+ * NOT stored in Realm during Phase 1 - only generic Asset instances are stored.
+ * See Asset.ts for architecture details.
+ */
 import { AssetCondition, AssetType, RoadSurfaceType, TrafficVolume } from "@/types";
 import { Asset } from "./Asset";
 
