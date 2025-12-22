@@ -4,7 +4,7 @@ jest.mock("@realm/react");
 jest.mock("@/storage/realm", () => ({
   getRealm: jest.fn().mockResolvedValue({
     isClosed: false,
-    schema: [{ name: "Road" }, { name: "Inspection" }],
+    schema: [{ name: "Asset" }, { name: "Inspection" }],
     write: jest.fn((fn) => fn()),
     objects: jest.fn(() => []),
     close: jest.fn(),
@@ -32,10 +32,10 @@ describe("Realm Database Setup", () => {
     expect(realm.isClosed).toBe(false);
   });
 
-  it("should load Road schema", () => {
-    const roadSchema = realm.schema.find((s) => s.name === "Road");
-    expect(roadSchema).toBeDefined();
-    expect(roadSchema?.name).toBe("Road");
+  it("should load Asset schema", () => {
+    const assetSchema = realm.schema.find((s) => s.name === "Asset");
+    expect(assetSchema).toBeDefined();
+    expect(assetSchema?.name).toBe("Asset");
   });
 
   it("should load Inspection schema", () => {

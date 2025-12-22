@@ -54,7 +54,9 @@ describe("AIAssistant", () => {
   });
 
   it("clears input after send and shows draft card", async () => {
-    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(<AIAssistant />);
+    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(
+      <AIAssistant />
+    );
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
     );
@@ -65,7 +67,7 @@ describe("AIAssistant", () => {
     await findByText("Draft road details");
   });
 
-  it("auto-proposes when required fields are complete", async () => {
+  it("creates a proposal via the draft form when required fields are complete", async () => {
     const { getByPlaceholderText, getByText, findByText } = render(<AIAssistant />);
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
@@ -81,16 +83,22 @@ describe("AIAssistant", () => {
     fireEvent.press(getByText("Send"));
     await findByText("Draft road details");
 
-    // Third send -> add trafficVolume; auto-proposal should appear
+    // Third send -> add trafficVolume; create should now be possible
     fireEvent.changeText(input, "traffic is low");
     fireEvent.press(getByText("Send"));
 
+    // Wait for assistant response + draft merge to complete
+    await findByText("Thanks.");
+
+    fireEvent.press(getByText("Create from draft"));
     await findByText("Proposed action");
     await findByText("create_road");
   });
 
   it("resets state with Reset button", async () => {
-    const { getByText, queryByText, getByPlaceholderText } = render(<AIAssistant />);
+    const { getByText, queryByText, getByPlaceholderText } = render(
+      <AIAssistant />
+    );
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
     );
@@ -99,9 +107,9 @@ describe("AIAssistant", () => {
     await waitFor(() => expect(queryByText("Draft road details")).not.toBeNull());
 
     fireEvent.press(getByText("Reset"));
-    await waitFor(() => expect(queryByText("Draft road details")).toBeNull());
+    // Draft form stays visible (Road-only Phase 1), but fields and messages reset.
+    await waitFor(() => expect(queryByText("Quick examples")).not.toBeNull());
+    const roadName = getByPlaceholderText("e.g., Cedar Lane");
+    await waitFor(() => expect(roadName.props.value).toBe(""));
   });
 });
-
-
-

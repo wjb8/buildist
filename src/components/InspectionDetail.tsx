@@ -301,7 +301,7 @@ export default function InspectionDetail({ inspection, visible, onClose }: Inspe
                   setIsLoadingGallery(true);
                   const assets = await MediaLibrary.getAssetsAsync({
                     first: 40,
-                    sortBy: MediaLibrary.SortBy.creationTime as any,
+                    sortBy: MediaLibrary.SortBy.creationTime,
                     mediaType: [MediaLibrary.MediaType.photo],
                   });
                   setGalleryAssets(assets.assets || []);
@@ -350,7 +350,7 @@ export default function InspectionDetail({ inspection, visible, onClose }: Inspe
                   onPress={async () => {
                     try {
                       const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-                      const uri = (info as any).localUri || asset.uri;
+                      const uri = info.localUri || asset.uri;
                       if (uri) {
                         const realm = await getRealm();
                         realm.write(() => {

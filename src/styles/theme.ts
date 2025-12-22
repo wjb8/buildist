@@ -77,6 +77,7 @@ export const colors = {
 export const typography = {
   // Direct access to typography tokens
   ...typographyTokens,
+  fontWeight: typographyTokens.fontWeight,
 
   // Font families (will be configured based on platform)
   fontFamily: {
