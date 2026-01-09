@@ -30,6 +30,12 @@
     "plugins": [
       "expo-build-properties",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "69114f43-0fa8-41e6-aa2d-0272c6b293a5"
+      }
+    },
+    "owner": "jamesbrowndev"
   }
 }
