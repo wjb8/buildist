@@ -20,18 +20,15 @@ jest.mock("@/services/AIService", () => {
         if (mockCall === 1) {
           return {
             type: "text",
-            messages: [
-              "What is the road name?",
-              'DRAFT_JSON: {"condition":"good","surfaceType":"asphalt"}',
-            ],
+            messages: ["What is the road name?", 'DRAFT_JSON: {"condition":"good"}'],
           };
         }
         if (mockCall === 2) {
           return {
             type: "text",
             messages: [
-              "What is the traffic volume?",
-              'DRAFT_JSON: {"name":"Main St","condition":"good","surfaceType":"asphalt"}',
+              "Any notes to include?",
+              'DRAFT_JSON: {"name":"Main St","condition":"good"}',
             ],
           };
         }
@@ -39,7 +36,7 @@ jest.mock("@/services/AIService", () => {
           type: "text",
           messages: [
             "Thanks.",
-            'DRAFT_JSON: {"name":"Main St","condition":"good","surfaceType":"asphalt","trafficVolume":"low"}',
+            'DRAFT_JSON: {"name":"Main St","condition":"good","notes":"Near the downtown core"}',
           ],
         };
       });
@@ -83,8 +80,8 @@ describe("AIAssistant", () => {
     fireEvent.press(getByText("Send"));
     await findByText("Draft road details");
 
-    // Third send -> add trafficVolume; create should now be possible
-    fireEvent.changeText(input, "traffic is low");
+    // Third send -> add notes; create should now be possible
+    fireEvent.changeText(input, "notes are Near the downtown core");
     fireEvent.press(getByText("Send"));
 
     // Wait for assistant response + draft merge to complete
@@ -100,9 +97,7 @@ describe("AIAssistant", () => {
   });
 
   it("resets state with Reset button", async () => {
-    const { getByText, queryByText, getByPlaceholderText } = render(
-      <AIAssistant />
-    );
+    const { getByText, queryByText, getByPlaceholderText } = render(<AIAssistant />);
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
     );

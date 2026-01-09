@@ -131,6 +131,9 @@ function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; 
   const args = displayProposalArgs(toolCall);
   if (!isRecord(args)) return [{ label: "Details", value: String(args) }];
 
+  const supportedAssetFields = new Set(["name", "condition", "location", "notes", "qrTagId"]);
+  const isSupportedAssetField = (key: string): boolean => supportedAssetFields.has(key);
+
   const add = (label: string, raw: unknown, options?: { transform?: (v: string) => string }) => {
     const v = normalizeDisplayValue(raw);
     if (!v) return;
@@ -145,12 +148,6 @@ function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; 
     add("Location", args.location);
     add("Notes", args.notes);
     add("QR Tag", args.qrTagId);
-    add("Surface", args.surfaceType, { transform: (v) => capitalizeWords(v.toLowerCase()) });
-    add("Traffic", args.trafficVolume, { transform: (v) => capitalizeWords(v.toLowerCase()) });
-    add("Length (m)", args.length);
-    add("Width (m)", args.width);
-    add("Lanes", args.lanes);
-    add("Speed limit", args.speedLimit);
     return rows;
   }
 
@@ -158,7 +155,9 @@ function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; 
     add("Road", "<selected road>");
     const fields = isRecord(args.fields) ? args.fields : null;
     if (!fields) return rows.length > 0 ? rows : [{ label: "Fields", value: "(none)" }];
-    Object.entries(fields).forEach(([k, v]) => add(capitalizeWords(k), v));
+    Object.entries(fields)
+      .filter(([k]) => isSupportedAssetField(k))
+      .forEach(([k, v]) => add(capitalizeWords(k), v));
     return rows;
   }
 
@@ -167,7 +166,10 @@ function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; 
     add("Match", args.value);
     add("Limit", args.limit);
     const fields = isRecord(args.fields) ? args.fields : null;
-    if (fields) Object.entries(fields).forEach(([k, v]) => add(capitalizeWords(k), v));
+    if (fields)
+      Object.entries(fields)
+        .filter(([k]) => isSupportedAssetField(k))
+        .forEach(([k, v]) => add(capitalizeWords(k), v));
     return rows;
   }
 
@@ -354,7 +356,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     const fields = buildUpdateRoadFieldsFromDraft(draftFields, { includeName });
     if (Object.keys(fields).length === 0) {
       setMessages([
-        "I found the road, but I don't have any update details yet. Try: “Set condition to poor” or “Update traffic volume to high”.",
+        "I found the road, but I don't have any update details yet. Try: “Set condition to poor” or “Update notes to …”.",
       ]);
       setShowDraft(true);
       return;
@@ -465,7 +467,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
             - “Add road Cedar Lane with poor condition”
           </Text>
           <Text variant="bodySmall" style={[layoutStyles.mb1]}>
-            - “Update Main Street traffic volume to very high”
+            - “Update Main Street condition to poor”
           </Text>
           <Text variant="bodySmall">- “Find roads in downtown”</Text>
         </View>
