@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
@@ -210,6 +210,12 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
   const [showOptionalRoadFields, setShowOptionalRoadFields] = useState(false);
   const [lastSearchResults, setLastSearchResults] = useState<any[]>([]);
   const [lastUserPrompt, setLastUserPrompt] = useState("");
+  const requestSeqRef = useRef(0);
+
+  const nextRequestToken = () => {
+    requestSeqRef.current += 1;
+    return requestSeqRef.current;
+  };
 
   const ai = useMemo(
     () => new AIService({ proxyBaseUrl: AI_PROXY_BASE_URL, assistantId: OPENAI_ASSISTANT_ID }),
@@ -217,7 +223,11 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
   );
 
   const reset = () => {
+    // Invalidate any in-flight request so its result can't overwrite the reset state.
+    nextRequestToken();
     setPrompt("");
+    setLoading(false);
+    setLoadingMessage(null);
     setMessages([]);
     setProposal(null);
     setShowTechnicalDetails(false);
@@ -231,14 +241,17 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
   const handleSend = async () => {
     if (!prompt.trim()) return;
+    const requestToken = nextRequestToken();
     try {
       const online = await ai.checkOnline(3000);
       if (!online) {
+        if (requestToken !== requestSeqRef.current) return;
         setMessages((prev) => [...prev, "You're offline. Please check your connection."]);
         return;
       }
     } catch {}
 
+    if (requestToken !== requestSeqRef.current) return;
     setLoading(true);
     setLoadingMessage("Processing your request...");
     setProposal(null);
@@ -251,6 +264,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
       const nextHistory = [...history, { role: "user" as const, content: text }];
       const res = await ai.sendPromptAndPropose(text, nextHistory);
+      if (requestToken !== requestSeqRef.current) return;
       setLoadingMessage(null);
 
       if (res.type === "tool_proposal") {
@@ -284,9 +298,11 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
         { role: "assistant" as const, content: res.messages.join("\n") },
       ]);
     } catch {
+      if (requestToken !== requestSeqRef.current) return;
       setLoadingMessage(null);
       setMessages(["Failed to contact assistant."]);
     } finally {
+      if (requestToken !== requestSeqRef.current) return;
       setLoading(false);
       setLoadingMessage(null);
     }
@@ -294,10 +310,12 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
   const handleApply = async () => {
     if (!proposal) return;
+    const requestToken = nextRequestToken();
     setLoading(true);
     setLoadingMessage("Applying action...");
     try {
       const result = await ai.applyToolCall(proposal.toolCall as ToolCall);
+      if (requestToken !== requestSeqRef.current) return;
       const resultMessage = (result.success ? "Success: " : "Error: ") + result.message;
 
       if (Array.isArray(result.data) && result.data.length > 0) {
@@ -311,9 +329,11 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
       if (onActionApplied) onActionApplied(result);
     } catch (e) {
+      if (requestToken !== requestSeqRef.current) return;
       const message = e instanceof Error ? e.message : "Unknown error occurred";
       setMessages((prev) => [...prev, `Error: ${message}`]);
     } finally {
+      if (requestToken !== requestSeqRef.current) return;
       setLoading(false);
       setLoadingMessage(null);
     }
@@ -394,7 +414,12 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
         <View row spaceBetween style={[layoutStyles.mb2]}>
           <Text variant="h3">AI Assistant</Text>
           <View row>
-            <Button variant="secondary" onPress={reset} style={[layoutStyles.mr2]}>
+            <Button
+              variant="secondary"
+              onPress={reset}
+              style={[layoutStyles.mr2]}
+              disabled={loading}
+            >
               Reset
             </Button>
             {onClose ? (
