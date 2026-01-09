@@ -80,7 +80,7 @@ function displayProposalArgs(toolCall: ToolCall<unknown>) {
     return { ...args, _id: "<selected road>" };
   }
   if (toolCall.name === "delete_asset" && typeof args._id === "string") {
-    return { ...args, _id: "<selected road>" };
+    return { ...args, _id: "<selected asset>" };
   }
   return args;
 }
@@ -175,7 +175,7 @@ function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; 
 
   if (toolCall.name === "delete_asset") {
     add("Type", args.type, { transform: (v) => capitalizeWords(v) });
-    add("Asset", "<selected road>");
+    add("Asset", "<selected asset>");
     return rows;
   }
 
@@ -365,6 +365,14 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       return;
     }
 
+    const selectedType = normalizeString(selectedRoad?.type)?.toLowerCase();
+    if (selectedType && selectedType !== AssetType.ROAD) {
+      setMessages([
+        "This item isn't a road. Phase 1 only supports updating roads via the assistant (you can still delete non-road assets).",
+      ]);
+      return;
+    }
+
     const checkForRenameIntent = (text: string): boolean => {
       const lower = text.toLowerCase();
       return lower.includes("rename") || lower.includes("name to");
@@ -396,10 +404,15 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       setMessages(["Error: Selected road is missing an _id"]);
       return;
     }
+    const typeRaw = normalizeString(selectedRoad?.type);
+    const assetType =
+      typeRaw && Object.values(AssetType).includes(typeRaw as AssetType)
+        ? (typeRaw as AssetType)
+        : AssetType.ROAD;
     setProposal({
       type: "tool_proposal",
-      summary: "Ready to delete the selected road. Review and Apply.",
-      toolCall: { name: "delete_asset", arguments: { _id: id, type: AssetType.ROAD } },
+      summary: "Ready to delete the selected asset. Review and Apply.",
+      toolCall: { name: "delete_asset", arguments: { _id: id, type: assetType } },
     });
     setShowDraft(false);
   };
@@ -542,22 +555,24 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
               </Text>
 
               <View row style={[layoutStyles.mt2]}>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onPress={() => proposeUpdateForRoad(item)}
-                  style={[layoutStyles.mr2]}
-                  disabled={loading}
-                >
-                  Update this road
-                </Button>
+                {String(item.type || "").toLowerCase() === AssetType.ROAD ? (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onPress={() => proposeUpdateForRoad(item)}
+                    style={[layoutStyles.mr2]}
+                    disabled={loading}
+                  >
+                    Update
+                  </Button>
+                ) : null}
                 <Button
                   variant="secondary"
                   size="small"
                   onPress={() => proposeDeleteForRoad(item)}
                   disabled={loading}
                 >
-                  Delete this road
+                  Delete
                 </Button>
               </View>
             </Card>
