@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  ScrollView,
-  RefreshControl,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +14,7 @@ import QRScanner from "./QRScanner";
 import AIAssistant from "./AIAssistant";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 import { QRService } from "@/services/QRService";
-import { forceReseedDemoData } from "@/utils/demoData";
+import { seedDemoData } from "@/utils/demoData";
 
 interface MainPageProps {
   onLogout: () => void;
@@ -30,7 +28,7 @@ export default function MainPage({ onLogout }: MainPageProps) {
 
   // Seed demo data when component mounts
   useEffect(() => {
-    forceReseedDemoData();
+    seedDemoData();
   }, []);
 
   const handleAssetCreated = () => {
@@ -85,7 +83,7 @@ export default function MainPage({ onLogout }: MainPageProps) {
       {showForm ? (
         <View style={[layoutStyles.flex]}>
           <View style={[layoutStyles.flex, layoutStyles.p4]}>
-            <View style={[layoutStyles.mb4]}>
+            <View style={[layoutStyles.mb2]}>
               <View
                 style={[
                   { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -150,12 +148,8 @@ export default function MainPage({ onLogout }: MainPageProps) {
           </Modal>
         </View>
       ) : (
-        <ScrollView
-          style={[layoutStyles.flex]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={[layoutStyles.p4]}>
+        <View style={[layoutStyles.flex]}>
+          <View style={[layoutStyles.p4, layoutStyles.pb0]}>
             <View style={[layoutStyles.mb4]}>
               <View
                 style={[
@@ -202,13 +196,9 @@ export default function MainPage({ onLogout }: MainPageProps) {
                 </Button>
               </View>
             </View>
-
-            <AssetList
-              onRefresh={handleRefresh}
-              refreshing={refreshing}
-              focusQrTagId={focusQrTag}
-            />
           </View>
+
+          <AssetList onRefresh={handleRefresh} refreshing={refreshing} focusQrTagId={focusQrTag} />
 
           <Modal
             visible={showQRScanner}
@@ -221,7 +211,7 @@ export default function MainPage({ onLogout }: MainPageProps) {
               onClose={() => setShowQRScanner(false)}
             />
           </Modal>
-        </ScrollView>
+        </View>
       )}
 
       <Modal

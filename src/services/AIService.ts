@@ -85,6 +85,21 @@ function isFiniteNumber(value: unknown): value is number {
 	return typeof value === "number" && Number.isFinite(value);
 }
 
+function coerceAssetType(value: unknown): AssetType | null {
+	if (typeof value !== "string") return null;
+	const normalized = value
+		.trim()
+		.toLowerCase()
+		.replace(/[\s-]+/g, "_");
+	if (!normalized) return null;
+	const singular = normalized.endsWith("s") ? normalized.slice(0, -1) : normalized;
+	const candidates = [normalized, singular];
+	for (const v of candidates) {
+		if (Object.values(AssetType).includes(v as AssetType)) return v as AssetType;
+	}
+	return null;
+}
+
 function parsePartialCreateRoadArgs(value: unknown): Partial<CreateRoadArgs> | null {
 	if (!isRecord(value)) return null;
 	const out: Partial<CreateRoadArgs> = {};
@@ -129,21 +144,11 @@ function parsePartialCreateRoadArgs(value: unknown): Partial<CreateRoadArgs> | n
 
 function parseCreateRoadArgs(value: unknown): CreateRoadArgs | null {
 	if (!isRecord(value)) return null;
-	if (typeof value.name !== "string") return null;
-	if (!isAssetCondition(value.condition)) return null;
-	if (!isRoadSurfaceType(value.surfaceType)) return null;
-	if (!isTrafficVolume(value.trafficVolume)) return null;
-
-	const base: CreateRoadArgs = {
-		name: value.name,
-		condition: value.condition,
-		surfaceType: value.surfaceType,
-		trafficVolume: value.trafficVolume,
-	};
-
 	const partial = parsePartialCreateRoadArgs(value);
 	if (!partial) return null;
-	return { ...base, ...partial };
+	if (typeof partial.name !== "string") return null;
+	if (!isAssetCondition(partial.condition)) return null;
+	return partial as CreateRoadArgs;
 }
 
 function parseUpdateRoadArgs(value: unknown): UpdateRoadArgs | null {
@@ -169,8 +174,8 @@ function parseDeleteAssetArgs(value: unknown): DeleteAssetArgs | null {
 	if (!isRecord(value)) return null;
 	if (typeof value._id !== "string") return null;
 	if (typeof value.type !== "string") return null;
-	const assetType = value.type as AssetType;
-	if (!Object.values(AssetType).includes(assetType)) return null;
+	const assetType = coerceAssetType(value.type);
+	if (!assetType) return null;
 	return { _id: value._id, type: assetType };
 }
 
@@ -189,15 +194,14 @@ function parseFindAssetArgs(value: unknown): FindAssetArgs | null {
 	if (by !== "id" && by !== "name" && by !== "nameContains" && by !== "qrTagId" && by !== "search") return null;
 	if (typeof value.value !== "string") return null;
 	if (value.type !== undefined) {
-		if (typeof value.type !== "string") return null;
-		const assetType = value.type as AssetType;
-		if (!Object.values(AssetType).includes(assetType)) return null;
+		const assetType = coerceAssetType(value.type);
+		if (!assetType) return null;
 	}
 	if (value.limit !== undefined && !isFiniteNumber(value.limit)) return null;
 	return {
 		by,
 		value: value.value,
-		type: value.type as AssetType | undefined,
+		type: coerceAssetType(value.type) ?? undefined,
 		limit: value.limit as number | undefined,
 	};
 }

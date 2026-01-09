@@ -95,6 +95,22 @@ npm run test:coverage
 - **Production builds:** `expo build:ios` / `expo build:android`
 - **Serverless proxy:** Vercel Edge Function under `api/assistantProxy.ts`
 
+## Production / Beta Release Considerations
+
+### Local database (Realm)
+
+- **Schema changes**: If you change any Realm model schema (e.g. `src/storage/models/assets/Asset.ts`, `src/storage/models/Inspection.ts`), you must **bump `schemaVersion`** in `src/storage/realm.ts`. After a Play Store release, plan migrations carefully—schema breaks can wipe user data if you “just reset”.
+- **Seeding**: Keep demo seeding **seed-on-empty only** (do not reseed on every app start). Avoid any automatic “force reseed” behavior in beta/prod.
+- **Data loss expectations**: All data is **on-device only** in Phase 1. Uninstalling the app, switching phones, or clearing storage will remove data. (Sync/backup is out of scope for Phase 1.)
+- **Growth**: Inspections and photos can grow quickly. Photos are stored as **local URIs** (not blobs), but consider retention rules in later phases if testers generate lots of data.
+- **Encryption** (optional but recommended for sensitive data): Consider enabling Realm encryption before a “real” production rollout. It’s much easier to decide early than after shipping.
+
+### AI assistant (proxy)
+
+- **Env vars**: Ensure `EXPO_PUBLIC_AI_PROXY_URL` is set for the build you ship. The proxy must have `OPENAI_API_KEY` configured.
+- **Offline behavior**: Storage is offline-first; the AI assistant requires network access to the proxy. Make sure the UI fails gracefully when offline or when the proxy is down.
+- **Abuse protection**: Add basic rate limiting / auth to the proxy before broad distribution (to prevent open endpoint abuse).
+
 ## Conventions
 
 - Keep Realm schema definitions, AI tool schemas, and server tool definitions in sync.

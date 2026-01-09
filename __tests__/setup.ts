@@ -105,6 +105,10 @@ jest.mock("@/storage/realm", () => {
       );
     },
     delete: (obj: unknown) => {
+      if (Array.isArray(obj)) {
+        obj.forEach((item) => realm.delete(item));
+        return;
+      }
       const typeKeys = Object.keys(records);
       for (const t of typeKeys) {
         records[t] = (records[t] || []).filter((o) => o !== obj);

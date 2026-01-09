@@ -71,13 +71,9 @@ export function validateRoadDraftForCreate(fields: RoadDraftFields): RoadDraftVa
   const errors: RoadDraftValidation["errors"] = {};
   const name = normalizeString(fields.name);
   const condition = normalizeCondition(fields.condition);
-  const surfaceType = normalizeSurfaceType(fields.surfaceType);
-  const trafficVolume = normalizeTrafficVolume(fields.trafficVolume);
 
   if (!name) errors.name = "Road name is required";
   if (!condition) errors.condition = "Select a valid condition";
-  if (!surfaceType) errors.surfaceType = "Select a valid surface type";
-  if (!trafficVolume) errors.trafficVolume = "Select a valid traffic volume";
 
   return { isValidForCreate: Object.keys(errors).length === 0, errors };
 }
@@ -89,8 +85,6 @@ export function buildCreateRoadArgsFromDraft(fields: RoadDraftFields): CreateRoa
   const args: CreateRoadArgs = {
     name: String(normalizeString(fields.name)),
     condition: normalizeCondition(fields.condition)!,
-    surfaceType: normalizeSurfaceType(fields.surfaceType)!,
-    trafficVolume: normalizeTrafficVolume(fields.trafficVolume)!,
   };
 
   const numberKeys = ["length", "width", "lanes", "speedLimit"] as const;
@@ -98,7 +92,7 @@ export function buildCreateRoadArgsFromDraft(fields: RoadDraftFields): CreateRoa
   const isNumberKey = (k: keyof CreateRoadArgs): k is NumberKey =>
     k === "length" || k === "width" || k === "lanes" || k === "speedLimit";
 
-  const optional = ["location", "notes", "qrTagId", ...numberKeys] as const;
+  const optional = ["location", "notes", "qrTagId", "surfaceType", "trafficVolume", ...numberKeys] as const;
 
   optional.forEach((k) => {
     const raw = fields[k];
@@ -107,8 +101,18 @@ export function buildCreateRoadArgsFromDraft(fields: RoadDraftFields): CreateRoa
       const n = normalizeNumber(raw);
       if (n !== undefined) args[k] = n;
     } else {
-      const s = normalizeString(raw);
-      if (s) args[k] = s;
+      if (k === "surfaceType") {
+        const s = normalizeSurfaceType(raw);
+        if (s) args.surfaceType = s;
+        return;
+      }
+      if (k === "trafficVolume") {
+        const tv = normalizeTrafficVolume(raw);
+        if (tv) args.trafficVolume = tv;
+        return;
+      }
+      const str = normalizeString(raw);
+      if (str) args[k] = str;
     }
   });
 

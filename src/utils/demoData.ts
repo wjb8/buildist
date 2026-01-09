@@ -19,6 +19,7 @@ export const seedDemoData = async (forceReseed = false) => {
       });
     }
 
+    // Demo seed data for beta testing (seeded only when DB is empty).
     const demoAssets = [
       {
         type: AssetType.ROAD,
@@ -29,38 +30,31 @@ export const seedDemoData = async (forceReseed = false) => {
       },
       {
         type: AssetType.ROAD,
-        name: "Riverside Drive",
-        location: "Riverside Park Area",
-        condition: AssetCondition.GOOD,
-        notes: "Recently resurfaced scenic route along the river",
-      },
-      {
-        type: AssetType.ROAD,
         name: "Industrial Boulevard",
         location: "Industrial Zone",
         condition: AssetCondition.POOR,
-        notes: "Heavy truck traffic causing surface deterioration. Requires immediate attention.",
+        notes: "Heavy truck traffic causing surface deterioration. Requires attention.",
       },
       {
         type: AssetType.ROAD,
-        name: "Cedar Lane - East Section",
-        location: "Residential District East",
+        name: "Cedar Lane",
+        location: "Residential District",
         condition: AssetCondition.FAIR,
-        notes: "Residential street with moderate wear. Some drainage issues reported.",
+        notes: "Moderate wear with minor drainage issues reported by residents.",
+      },
+      {
+        type: AssetType.ROAD,
+        name: "Riverside Drive",
+        location: "Riverside Park Area",
+        condition: AssetCondition.GOOD,
+        notes: "Scenic route along the river. Light traffic and generally good surface.",
       },
       {
         type: AssetType.ROAD,
         name: "Highway 101 - Northbound",
         location: "Interstate Highway",
         condition: AssetCondition.POOR,
-        notes: "Major highway with significant pothole damage. High priority for repair.",
-      },
-      {
-        type: AssetType.VEHICLE,
-        name: "Snowplow Truck #3",
-        location: "Municipal Garage",
-        condition: AssetCondition.FAIR,
-        notes: "Plow blade shows moderate wear. Oil change due soon.",
+        notes: "High-speed corridor with recurring potholes. High priority for repair.",
       },
     ];
 
@@ -84,7 +78,7 @@ export const seedDemoData = async (forceReseed = false) => {
 
     await seedDemoInspections(realm, assetIds);
 
-    console.log(`Seeded ${demoAssets.length} assets with inspections`);
+    console.log(`Seeded ${demoAssets.length} demo assets`);
   } catch (error) {
     console.error("Failed to seed demo data:", error);
   }
@@ -114,77 +108,78 @@ const generateQRTagId = (type: AssetType): string => {
 
 const seedDemoInspections = async (realm: Realm, assetIds: string[]) => {
   const now = new Date();
-  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const demoInspections = [
-    {
-      assetId: assetIds[3],
-      inspector: "Sarah Johnson",
-      description:
-        "Drainage issues observed after heavy rainfall. Water pooling in several locations.",
-      score: 2,
-      timestamp: oneWeekAgo,
-      maintenanceNeeded: true,
-      issueType: "drainage",
-      priority: "high",
-      photos: [],
-      nextDue: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-    },
-    {
-      assetId: assetIds[3],
-      inspector: "Mike Chen",
-      description: "General wear observed, minor cracking beginning to appear.",
-      score: 3,
-      timestamp: oneMonthAgo,
-      maintenanceNeeded: false,
-      issueType: "cracks",
-      priority: "medium",
-      photos: [],
-      nextDue: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-    },
-    {
-      assetId: assetIds[4],
-      inspector: "Robert Martinez",
-      description:
-        "Severe pothole damage affecting traffic flow. Multiple large potholes in both lanes.",
-      score: 1,
-      timestamp: threeDaysAgo,
-      maintenanceNeeded: true,
-      issueType: "potholes",
-      priority: "high",
-      photos: [],
-      nextDue: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-    },
-    {
-      assetId: assetIds[2],
-      inspector: "Lisa Thompson",
-      description:
-        "Heavy truck traffic causing significant surface damage. Multiple areas need resurfacing.",
-      score: 2,
-      timestamp: twoWeeksAgo,
-      maintenanceNeeded: true,
-      issueType: "other",
-      priority: "medium",
-      photos: [],
-      nextDue: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
-    },
-    {
-      assetId: assetIds[0],
-      inspector: "David Wilson",
-      description: "Routine inspection completed. Road in good condition with minor wear.",
-      score: 4,
-      timestamp: twoWeeksAgo,
-      maintenanceNeeded: false,
-      issueType: "none",
-      priority: "low",
-      photos: [],
-      nextDue: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
-    },
-  ];
+    assetIds[0]
+      ? {
+          assetId: assetIds[0],
+          inspector: "Demo Inspector",
+          description: "Routine inspection completed. Road in good condition.",
+          score: 4,
+          timestamp: twoWeeksAgo,
+          maintenanceNeeded: false,
+          issueType: "none",
+          priority: "low",
+          photos: [],
+          nextDue: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[1]
+      ? {
+          assetId: assetIds[1],
+          inspector: "Demo Inspector",
+          description: "Severe surface deterioration observed. Repair recommended.",
+          score: 1,
+          timestamp: oneWeekAgo,
+          maintenanceNeeded: true,
+          issueType: "potholes",
+          priority: "high",
+          photos: [],
+          nextDue: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[2]
+      ? {
+          assetId: assetIds[2],
+          inspector: "Demo Inspector",
+          description: "Moderate wear observed. Monitor drainage and minor cracking.",
+          score: 3,
+          timestamp: oneWeekAgo,
+          maintenanceNeeded: false,
+          issueType: "drainage",
+          priority: "medium",
+          photos: [],
+          nextDue: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[4]
+      ? {
+          assetId: assetIds[4],
+          inspector: "Demo Inspector",
+          description: "Multiple potholes impacting traffic flow. Maintenance required.",
+          score: 2,
+          timestamp: twoWeeksAgo,
+          maintenanceNeeded: true,
+          issueType: "potholes",
+          priority: "high",
+          photos: [],
+          nextDue: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    assetId: string;
+    inspector: string;
+    description: string;
+    score: number;
+    timestamp: Date;
+    maintenanceNeeded: boolean;
+    nextDue?: Date;
+    issueType?: string;
+    priority?: string;
+    photos?: string[];
+  }>;
 
   realm.write(() => {
     for (const inspectionData of demoInspections) {

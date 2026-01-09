@@ -19,6 +19,7 @@ class MockObjectId {
 
 export default class Realm {
   static BSON = { ObjectId: MockObjectId };
+  static Object = class {};
   write(fn: () => void) {
     fn();
   }

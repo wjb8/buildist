@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ScrollView, RefreshControl, Modal, Pressable } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, View as RNView } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { FontAwesome } from "@expo/vector-icons";
 import { View } from "./View";
@@ -33,6 +33,19 @@ interface AssetListProps {
   focusQrTagId?: string;
 }
 
+const styles = StyleSheet.create({
+  headerTitleText: {
+    flexShrink: 1,
+  },
+  conditionDot: {
+    width: spacing.md,
+    height: spacing.md,
+    borderRadius: spacing.md / 2,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+});
+
 export default function AssetList({ onRefresh, refreshing, focusQrTagId }: AssetListProps) {
   const realm = useRealm();
   const assets = useQuery(Asset);
@@ -57,6 +70,32 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
         return "error";
       default:
         return "secondary";
+    }
+  };
+
+  const getConditionDotColor = (condition: AssetCondition) => {
+    switch (condition) {
+      case AssetCondition.GOOD:
+        return colors.success.lighter;
+      case AssetCondition.FAIR:
+        return colors.warning.lighter;
+      case AssetCondition.POOR:
+        return colors.error.lighter;
+      default:
+        return colors.neutral.lighter;
+    }
+  };
+
+  const getConditionLabel = (condition: AssetCondition) => {
+    switch (condition) {
+      case AssetCondition.GOOD:
+        return "Good";
+      case AssetCondition.FAIR:
+        return "Fair";
+      case AssetCondition.POOR:
+        return "Poor";
+      default:
+        return "Unknown";
     }
   };
 
@@ -184,11 +223,8 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
   ];
 
   return (
-    <ScrollView
-      style={[layoutStyles.flex]}
-      refreshControl={<RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />}
-    >
-      <View style={[layoutStyles.p4]}>
+    <View style={[layoutStyles.flex]}>
+      <View style={[layoutStyles.p4, layoutStyles.pt1, layoutStyles.pb2]}>
         <View style={[layoutStyles.mb2]}>
           <Text variant="h3">{mode === "attention" ? "Needs Attention" : "All Assets"}</Text>
         </View>
@@ -240,12 +276,19 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
             </Button>
           </View>
         )}
+      </View>
 
-        {filteredAssets.map((item, index) => {
+      <FlatList
+        data={filteredAssets}
+        keyExtractor={(item) => item.asset._id.toString()}
+        refreshing={refreshing || false}
+        onRefresh={onRefresh}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[layoutStyles.p4, layoutStyles.pt0]}
+        renderItem={({ item, index }) => {
           const { asset, latestInspection, flags } = item;
           return (
             <Card
-              key={asset._id.toString()}
               style={
                 highlightedAssetId === asset._id.toHexString()
                   ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
@@ -258,7 +301,9 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                     <Badge variant="secondary" size="small">
                       {getAssetTypeLabel(asset.type as AssetType)}
                     </Badge>
-                    <Text variant="h4">{asset.name}</Text>
+                    <Text variant="h4" style={styles.headerTitleText}>
+                      {asset.name}
+                    </Text>
                   </View>
                   {asset.location && (
                     <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
@@ -267,15 +312,11 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
                   )}
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Badge variant={getConditionColor(asset.condition)}>
-                    {`Condition: ${
-                      asset.condition === AssetCondition.GOOD
-                        ? "Good"
-                        : asset.condition === AssetCondition.FAIR
-                        ? "Fair"
-                        : "Poor"
-                    }`}
-                  </Badge>
+                  <RNView
+                    accessible
+                    accessibilityLabel={`Condition: ${getConditionLabel(asset.condition)}`}
+                    style={[styles.conditionDot, { backgroundColor: getConditionDotColor(asset.condition) }]}
+                  />
                 </View>
               </View>
 
@@ -489,8 +530,8 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               {index < filteredAssets.length - 1 && <Divider style={[layoutStyles.mt3]} />}
             </Card>
           );
-        })}
-      </View>
+        }}
+      />
 
       <Modal
         visible={!!editingAssetId}
@@ -529,6 +570,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           onInspectionTap={setSelectedInspection}
         />
       )}
-    </ScrollView>
+    </View>
   );
 }

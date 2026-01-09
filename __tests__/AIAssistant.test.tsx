@@ -90,9 +90,13 @@ describe("AIAssistant", () => {
     // Wait for assistant response + draft merge to complete
     await findByText("Thanks.");
 
+    // Draft is hidden by default; open it to create from the draft values.
+    fireEvent.press(getByText("Review details"));
+    await findByText("Draft road details");
+
     fireEvent.press(getByText("Create from draft"));
     await findByText("Proposed action");
-    await findByText("create_road");
+    await findByText("Create road");
   });
 
   it("resets state with Reset button", async () => {
@@ -104,11 +108,14 @@ describe("AIAssistant", () => {
     );
     fireEvent.changeText(input, "hello");
     fireEvent.press(getByText("Send"));
+    await waitFor(() => expect(queryByText("Review details")).not.toBeNull());
+    fireEvent.press(getByText("Review details"));
     await waitFor(() => expect(queryByText("Draft road details")).not.toBeNull());
 
     fireEvent.press(getByText("Reset"));
-    // Draft form stays visible (Road-only Phase 1), but fields and messages reset.
-    await waitFor(() => expect(queryByText("Quick examples")).not.toBeNull());
+    await waitFor(() => expect(queryByText("Review details")).not.toBeNull());
+    await waitFor(() => expect(queryByText("Draft road details")).toBeNull());
+    fireEvent.press(getByText("Review details"));
     const roadName = getByPlaceholderText("e.g., Cedar Lane");
     await waitFor(() => expect(roadName.props.value).toBe(""));
   });

@@ -1,5 +1,6 @@
 import Realm from "realm";
 import { getRealm } from "@/storage/realm";
+import { Inspection } from "@/storage/models/Inspection";
 import {
   CreateRoadArgs,
   DeleteAssetArgs,
@@ -9,6 +10,7 @@ import {
   UpdateRoadByArgs,
 } from "./toolSchemas";
 import { AssetType } from "@/types/asset";
+import { QRService } from "@/services/QRService";
 
 export interface ToolExecutionResult {
   success: boolean;
@@ -34,6 +36,8 @@ export async function applyCreateRoad(args: CreateRoadArgs): Promise<ToolExecuti
   let createdId: Realm.BSON.ObjectId | null = null;
   realm.write(() => {
     createdId = new Realm.BSON.ObjectId();
+    const providedQrTagId = typeof args.qrTagId === "string" ? args.qrTagId.trim() : "";
+    const qrTagId = providedQrTagId || QRService.generateAssetQRTagId(AssetType.ROAD);
     realm.create("Asset", {
       _id: createdId,
       type: AssetType.ROAD,
@@ -41,13 +45,13 @@ export async function applyCreateRoad(args: CreateRoadArgs): Promise<ToolExecuti
       location: args.location,
       condition: args.condition,
       notes: args.notes,
-      qrTagId: args.qrTagId ?? undefined,
+      qrTagId,
       createdAt: new Date(),
       updatedAt: new Date(),
       synced: false,
     });
   });
-  const idValue = createdId ? String(createdId) : undefined;
+  const idValue = createdId ? createdId.toHexString() : undefined;
   return { success: true, message: "Road created", data: { _id: idValue } };
 }
 
@@ -196,6 +200,12 @@ export async function applyDeleteAsset(args: DeleteAssetArgs): Promise<ToolExecu
     return { success: false, message: `Asset type mismatch: expected ${args.type}, found ${obj.type}` };
   }
   realm.write(() => {
+    const linkedInspections = realm
+      .objects<Inspection>("Inspection")
+      .filtered("assetId == $0", objectId.toHexString());
+    if (linkedInspections.length > 0) {
+      realm.delete(linkedInspections);
+    }
     realm.delete(obj);
   });
   return { success: true, message: "Asset deleted", data: { _id: args._id } };
@@ -222,6 +232,12 @@ export async function applyDeleteRoadBy(args: DeleteRoadByArgs): Promise<ToolExe
     target?._id instanceof Realm.BSON.ObjectId ? target._id.toHexString() : String(target?._id);
 
   realm.write(() => {
+    const linkedInspections = realm
+      .objects<Inspection>("Inspection")
+      .filtered("assetId == $0", idValue);
+    if (linkedInspections.length > 0) {
+      realm.delete(linkedInspections);
+    }
     realm.delete(target);
   });
 

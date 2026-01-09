@@ -18,6 +18,7 @@ import {
   buildUpdateRoadFieldsFromDraft,
   normalizeRoadDraftFields,
   normalizeString,
+  validateRoadDraftForCreate,
 } from "../services/ai/draftRoad";
 
 interface AIAssistantProps {
@@ -84,12 +85,124 @@ function displayProposalArgs(toolCall: ToolCall<unknown>) {
   return args;
 }
 
+function capitalizeWords(value: string): string {
+  return value
+    .split(/[_\s]+/g)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function normalizeDisplayValue(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof value === "number") {
+    // Avoid clutter from default zeros in optional numeric fields
+    if (!Number.isFinite(value) || value === 0) return null;
+    return String(value);
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+function humanizeToolName(name: string): string {
+  switch (name) {
+    case "create_road":
+      return "Create road";
+    case "update_road":
+      return "Update road";
+    case "update_road_by":
+      return "Update road (find then update)";
+    case "delete_asset":
+      return "Delete asset";
+    case "delete_road_by":
+      return "Delete road (find then delete)";
+    case "find_asset":
+      return "Find assets";
+    default:
+      return capitalizeWords(name);
+  }
+}
+
+function buildProposalRows(toolCall: ToolCall<unknown>): Array<{ label: string; value: string }> {
+  const args = displayProposalArgs(toolCall);
+  if (!isRecord(args)) return [{ label: "Details", value: String(args) }];
+
+  const add = (label: string, raw: unknown, options?: { transform?: (v: string) => string }) => {
+    const v = normalizeDisplayValue(raw);
+    if (!v) return;
+    rows.push({ label, value: options?.transform ? options.transform(v) : v });
+  };
+
+  const rows: Array<{ label: string; value: string }> = [];
+
+  if (toolCall.name === "create_road") {
+    add("Name", args.name);
+    add("Condition", args.condition, { transform: (v) => capitalizeWords(v.toLowerCase()) });
+    add("Location", args.location);
+    add("Notes", args.notes);
+    add("QR Tag", args.qrTagId);
+    add("Surface", args.surfaceType, { transform: (v) => capitalizeWords(v.toLowerCase()) });
+    add("Traffic", args.trafficVolume, { transform: (v) => capitalizeWords(v.toLowerCase()) });
+    add("Length (m)", args.length);
+    add("Width (m)", args.width);
+    add("Lanes", args.lanes);
+    add("Speed limit", args.speedLimit);
+    return rows;
+  }
+
+  if (toolCall.name === "update_road") {
+    add("Road", "<selected road>");
+    const fields = isRecord(args.fields) ? args.fields : null;
+    if (!fields) return rows.length > 0 ? rows : [{ label: "Fields", value: "(none)" }];
+    Object.entries(fields).forEach(([k, v]) => add(capitalizeWords(k), v));
+    return rows;
+  }
+
+  if (toolCall.name === "update_road_by") {
+    add("Find by", args.by, { transform: (v) => capitalizeWords(v) });
+    add("Match", args.value);
+    add("Limit", args.limit);
+    const fields = isRecord(args.fields) ? args.fields : null;
+    if (fields) Object.entries(fields).forEach(([k, v]) => add(capitalizeWords(k), v));
+    return rows;
+  }
+
+  if (toolCall.name === "delete_asset") {
+    add("Type", args.type, { transform: (v) => capitalizeWords(v) });
+    add("Asset", "<selected road>");
+    return rows;
+  }
+
+  if (toolCall.name === "delete_road_by") {
+    add("Find by", args.by, { transform: (v) => capitalizeWords(v) });
+    add("Match", args.value);
+    add("Limit", args.limit);
+    return rows;
+  }
+
+  if (toolCall.name === "find_asset") {
+    add("Find by", args.by, { transform: (v) => capitalizeWords(v) });
+    add("Query", args.value);
+    add("Type", args.type, { transform: (v) => capitalizeWords(v) });
+    add("Limit", args.limit);
+    return rows;
+  }
+
+  return [{ label: "Details", value: JSON.stringify(args, null, 2) }];
+}
+
 export default function AIAssistant({ onActionApplied, onClose }: AIAssistantProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [proposal, setProposal] = useState<AIProposedAction | null>(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [showDraft, setShowDraft] = useState(false);
   const [history, setHistory] = useState<ConversationTurn[]>([]);
   const [draftFields, setDraftFields] = useState<RoadDraftFields>({});
   const [showOptionalRoadFields, setShowOptionalRoadFields] = useState(false);
@@ -105,6 +218,8 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     setPrompt("");
     setMessages([]);
     setProposal(null);
+    setShowTechnicalDetails(false);
+    setShowDraft(false);
     setHistory([]);
     setDraftFields({});
     setLastSearchResults([]);
@@ -138,6 +253,8 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
       if (res.type === "tool_proposal") {
         setProposal(res);
+        setShowTechnicalDetails(false);
+        setShowDraft(false);
         const normalizedSummary = res.summary || "Ready. Review the details and Apply.";
         const summaryLines = cleanMessages([normalizedSummary]);
         if (summaryLines.length > 0) setMessages(summaryLines);
@@ -208,6 +325,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
     const args = buildCreateRoadArgsFromDraft(draftFields);
     if (!args) {
       setMessages(["Please fill the required Road fields below (highlighted), then click Create."]);
+      setShowDraft(true);
       return;
     }
     setProposal({
@@ -215,6 +333,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       summary: "Ready to create this road. Review and Apply.",
       toolCall: { name: "create_road", arguments: args },
     });
+    setShowDraft(false);
   };
 
   const proposeUpdateForRoad = (selectedRoad: any) => {
@@ -237,6 +356,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       setMessages([
         "I found the road, but I don't have any update details yet. Try: “Set condition to poor” or “Update traffic volume to high”.",
       ]);
+      setShowDraft(true);
       return;
     }
 
@@ -245,6 +365,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       summary: "Ready to update the selected road. Review and Apply.",
       toolCall: { name: "update_road", arguments: { _id: id, fields } },
     });
+    setShowDraft(false);
   };
 
   const proposeDeleteForRoad = (selectedRoad: any) => {
@@ -258,7 +379,12 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
       summary: "Ready to delete the selected road. Review and Apply.",
       toolCall: { name: "delete_asset", arguments: { _id: id, type: AssetType.ROAD } },
     });
+    setShowDraft(false);
   };
+
+  const draftValidation = validateRoadDraftForCreate(draftFields);
+  const shouldPromptForDraft =
+    !proposal && draftFields.intent === "create" && !draftValidation.isValidForCreate;
 
   return (
     <ScrollView contentContainerStyle={[layoutStyles.p3, layoutStyles.pb5]}>
@@ -277,22 +403,45 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
           </View>
         </View>
 
-        <Text variant="bodySmall" style={[layoutStyles.mb2]}>
-          Describe what you want (Roads), then confirm details in the draft form.
-        </Text>
-
         <Input
           placeholder="Describe what you want to do (e.g., create, update, or find an asset...)"
           value={prompt}
           onChangeText={setPrompt}
+          multiline
+          numberOfLines={4}
           fullWidth
-          style={[layoutStyles.mb2]}
+          style={[
+            layoutStyles.mb2,
+            { minHeight: spacing.xl * 3, paddingVertical: spacing.sm, textAlignVertical: "top" },
+          ]}
           editable={!loading}
         />
 
         <Button onPress={handleSend} disabled={loading || !AI_PROXY_BASE_URL}>
           {loading ? "Working..." : !AI_PROXY_BASE_URL ? "Configure AI proxy" : "Send"}
         </Button>
+
+        <View style={[layoutStyles.mt2]}>
+          {showDraft || shouldPromptForDraft ? (
+            <Button
+              variant="secondary"
+              size="small"
+              onPress={() => setShowDraft(false)}
+              disabled={loading}
+            >
+              Hide details
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="small"
+              onPress={() => setShowDraft(true)}
+              disabled={loading}
+            >
+              Review details
+            </Button>
+          )}
+        </View>
       </View>
 
       {loading && loadingMessage ? (
@@ -312,9 +461,6 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
 
       {messages.length === 0 && !loading ? (
         <View card style={[layoutStyles.mt3]}>
-          <Text variant="h4" style={[layoutStyles.mb1]}>
-            Quick examples
-          </Text>
           <Text variant="bodySmall" style={[layoutStyles.mb1]}>
             - “Add road Cedar Lane with poor condition”
           </Text>
@@ -335,14 +481,16 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
         </View>
       ) : null}
 
-      <DraftRoadForm
-        fields={draftFields}
-        onChangeField={handleDraftChange}
-        onToggleOptional={() => setShowOptionalRoadFields((v) => !v)}
-        showOptional={showOptionalRoadFields}
-        onCreate={proposeCreateFromDraft}
-        disabled={loading}
-      />
+      {showDraft || shouldPromptForDraft ? (
+        <DraftRoadForm
+          fields={draftFields}
+          onChangeField={handleDraftChange}
+          onToggleOptional={() => setShowOptionalRoadFields((v) => !v)}
+          showOptional={showOptionalRoadFields}
+          onCreate={proposeCreateFromDraft}
+          disabled={loading}
+        />
+      ) : null}
 
       {lastSearchResults.length > 0 ? (
         <View style={[layoutStyles.mt3]}>
@@ -363,8 +511,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
                 </Text>
               ) : null}
               <Text variant="bodySmall" style={{ color: colors.text.secondary }}>
-                Condition: {String(item.condition ?? "—")} · Surface:{" "}
-                {String(item.surfaceType ?? "—")} · Traffic: {String(item.trafficVolume ?? "—")}
+                Condition: {String(item.condition ?? "—")}
               </Text>
 
               <View row style={[layoutStyles.mt2]}>
@@ -397,7 +544,7 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
             Proposed action
           </Text>
           <Text variant="bodySmall" style={[layoutStyles.mb2, { color: colors.text.secondary }]}>
-            {proposal.toolCall.name}
+            {humanizeToolName(proposal.toolCall.name)}
           </Text>
           <View
             style={[
@@ -408,9 +555,33 @@ export default function AIAssistant({ onActionApplied, onClose }: AIAssistantPro
               { marginBottom: spacing.sm },
             ]}
           >
-            <Text variant="bodySmall" style={{ color: colors.text.secondary }}>
-              {JSON.stringify(displayProposalArgs(proposal.toolCall), null, 2)}
-            </Text>
+            {buildProposalRows(proposal.toolCall).map((row) => (
+              <View key={row.label} row spaceBetween style={[layoutStyles.mb1]}>
+                <Text variant="bodySmall" style={{ color: colors.text.secondary }}>
+                  {row.label}
+                </Text>
+                <Text variant="bodySmall">{row.value}</Text>
+              </View>
+            ))}
+
+            <View style={[layoutStyles.mt2]}>
+              <Button
+                variant="secondary"
+                size="small"
+                onPress={() => setShowTechnicalDetails((v) => !v)}
+                disabled={loading}
+              >
+                {showTechnicalDetails ? "Hide technical details" : "Show technical details"}
+              </Button>
+            </View>
+
+            {showTechnicalDetails ? (
+              <View style={[layoutStyles.mt2]}>
+                <Text variant="caption" style={{ color: colors.text.secondary }}>
+                  {JSON.stringify(displayProposalArgs(proposal.toolCall), null, 2)}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <View row spaceBetween>
             <Button variant="secondary" onPress={() => setProposal(null)} disabled={loading}>

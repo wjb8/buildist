@@ -4,8 +4,10 @@ import {
   applyUpdateRoadBy,
   applyFindAsset,
 } from "@/services/ai/handlers";
+import { getRealm } from "@/storage/realm";
 import { AssetCondition, AssetType } from "@/types/asset";
 import { RoadSurfaceType, TrafficVolume } from "@/types/road";
+import Realm from "realm";
 
 function assertArray(value: unknown): asserts value is unknown[] {
   if (!Array.isArray(value)) throw new Error("Expected data to be an array");
@@ -64,6 +66,47 @@ describe("Road selector-based tools", () => {
     });
     expect(findRes.success).toBe(true);
     expect(findRes.data).toEqual([]);
+  });
+
+  it("delete_road_by also deletes inspections linked to the road", async () => {
+    const created = await applyCreateRoad({
+      name: "Inspection Test Road",
+      condition: AssetCondition.GOOD,
+      surfaceType: RoadSurfaceType.ASPHALT,
+      trafficVolume: TrafficVolume.MEDIUM,
+    });
+    expect(created.success).toBe(true);
+    const createdId = (created.data as any)?._id as string | undefined;
+    expect(typeof createdId).toBe("string");
+
+    const realm = await getRealm();
+    realm.write(() => {
+      realm.create("Inspection", {
+        _id: new Realm.BSON.ObjectId(),
+        assetId: createdId,
+        inspector: "Tester",
+        description: "Test inspection",
+        score: 3,
+        timestamp: new Date(),
+        maintenanceNeeded: false,
+        issueType: "none",
+        priority: "low",
+        photos: [],
+        nextDue: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        synced: false,
+      });
+    });
+
+    const before = realm.objects("Inspection").filtered("assetId == $0", createdId);
+    expect(before.length).toBe(1);
+
+    const del = await applyDeleteRoadBy({ by: "name", value: "Inspection Test Road" });
+    expect(del.success).toBe(true);
+
+    const after = realm.objects("Inspection").filtered("assetId == $0", createdId);
+    expect(after.length).toBe(0);
   });
 
   it("update_road_by returns candidates when selection is ambiguous", async () => {

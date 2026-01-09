@@ -5,14 +5,11 @@ import { Button } from "../Button";
 import Select from "../Select";
 import { layoutStyles, spacing, colors } from "../../styles";
 import { AssetCondition } from "../../types/asset";
-import { RoadSurfaceType, TrafficVolume } from "../../types/road";
 import type { CreateRoadArgs } from "../../services/ai/toolSchemas";
 import {
   RoadDraftFields,
   validateRoadDraftForCreate,
   normalizeCondition,
-  normalizeSurfaceType,
-  normalizeTrafficVolume,
 } from "../../services/ai/draftRoad";
 
 interface DraftRoadFormProps {
@@ -52,7 +49,7 @@ export default function DraftRoadForm({
         style={[layoutStyles.mb2]}
       />
 
-      <View style={[layoutStyles.mb2]}>
+      <View style={[layoutStyles.mb3]}>
         <Text style={[layoutStyles.mb1]} variant="bodySmall">
           Condition *
         </Text>
@@ -70,54 +67,6 @@ export default function DraftRoadForm({
         {validation.errors.condition ? (
           <Text variant="caption" style={{ color: colors.error.main, marginTop: spacing.xs }}>
             {validation.errors.condition}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={[layoutStyles.mb2]}>
-        <Text style={[layoutStyles.mb1]} variant="bodySmall">
-          Surface Type *
-        </Text>
-        <Select
-          value={normalizeSurfaceType(fields.surfaceType)}
-          onChange={(v) => onChangeField("surfaceType", normalizeSurfaceType(v) ?? v)}
-          options={[
-            { value: RoadSurfaceType.ASPHALT, label: "Asphalt" },
-            { value: RoadSurfaceType.CONCRETE, label: "Concrete" },
-            { value: RoadSurfaceType.GRAVEL, label: "Gravel" },
-            { value: RoadSurfaceType.DIRT, label: "Dirt" },
-            { value: RoadSurfaceType.PAVER, label: "Paver" },
-            { value: RoadSurfaceType.OTHER, label: "Other" },
-          ]}
-          placeholder="Select surface type"
-          disabled={disabled}
-        />
-        {validation.errors.surfaceType ? (
-          <Text variant="caption" style={{ color: colors.error.main, marginTop: spacing.xs }}>
-            {validation.errors.surfaceType}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={[layoutStyles.mb3]}>
-        <Text style={[layoutStyles.mb1]} variant="bodySmall">
-          Traffic Volume *
-        </Text>
-        <Select
-          value={normalizeTrafficVolume(fields.trafficVolume)}
-          onChange={(v) => onChangeField("trafficVolume", normalizeTrafficVolume(v) ?? v)}
-          options={[
-            { value: TrafficVolume.LOW, label: "Low" },
-            { value: TrafficVolume.MEDIUM, label: "Medium" },
-            { value: TrafficVolume.HIGH, label: "High" },
-            { value: TrafficVolume.VERY_HIGH, label: "Very High" },
-          ]}
-          placeholder="Select traffic volume"
-          disabled={disabled}
-        />
-        {validation.errors.trafficVolume ? (
-          <Text variant="caption" style={{ color: colors.error.main, marginTop: spacing.xs }}>
-            {validation.errors.trafficVolume}
           </Text>
         ) : null}
       </View>
@@ -141,48 +90,6 @@ export default function DraftRoadForm({
             numberOfLines={3}
             style={[layoutStyles.mb2]}
           />
-
-          <View row style={[layoutStyles.mb2]}>
-            <View style={[layoutStyles.flex, layoutStyles.mr2]}>
-              <Input
-                label="Length (m)"
-                value={String(fields.length ?? "")}
-                onChangeText={(v) => onChangeField("length", v.replace(/[^0-9.]/g, ""))}
-                placeholder="Optional"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={[layoutStyles.flex]}>
-              <Input
-                label="Width (m)"
-                value={String(fields.width ?? "")}
-                onChangeText={(v) => onChangeField("width", v.replace(/[^0-9.]/g, ""))}
-                placeholder="Optional"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View row style={[layoutStyles.mb2]}>
-            <View style={[layoutStyles.flex, layoutStyles.mr2]}>
-              <Input
-                label="Lanes"
-                value={String(fields.lanes ?? "")}
-                onChangeText={(v) => onChangeField("lanes", v.replace(/[^0-9]/g, ""))}
-                placeholder="Optional"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={[layoutStyles.flex]}>
-              <Input
-                label="Speed Limit"
-                value={String(fields.speedLimit ?? "")}
-                onChangeText={(v) => onChangeField("speedLimit", v.replace(/[^0-9]/g, ""))}
-                placeholder="Optional"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
 
           <Input
             label="QR Tag ID"

@@ -15,8 +15,8 @@ export interface CreateRoadArgs {
   condition: AssetCondition;
   notes?: string;
   qrTagId?: string;
-  surfaceType: RoadSurfaceType;
-  trafficVolume: TrafficVolume;
+  surfaceType?: RoadSurfaceType;
+  trafficVolume?: TrafficVolume;
   length?: number;
   width?: number;
   lanes?: number;
@@ -73,7 +73,7 @@ export const createRoadJsonSchema = {
   name: "create_road",
   parameters: {
     type: "object",
-    required: ["name", "condition", "surfaceType", "trafficVolume"],
+    required: ["name", "condition"],
     properties: {
       name: { type: "string" },
       location: { type: "string" },

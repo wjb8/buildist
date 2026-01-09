@@ -6,7 +6,18 @@ export const DELETE_ASSET_TOOL = {
     required: ["_id", "type"],
     properties: {
       _id: { type: "string", description: "Hex string ObjectId of the asset" },
-      type: { type: "string", enum: ["Road", "Vehicle"] },
+      type: {
+        type: "string",
+        enum: [
+          "road",
+          "vehicle",
+          "bridge",
+          "sidewalk",
+          "street_light",
+          "traffic_signal",
+          "other",
+        ],
+      },
     },
   },
 };

@@ -17,8 +17,8 @@ const GUIDANCE =
   "When the user wants to delete an asset and they provide an exact asset ID, use delete_asset with the asset ID and type. " +
   "Use tools proactively - don't ask clarifying questions unless the user's intent is genuinely unclear. " +
   "For find/search queries, use find_asset with by='search' to search across all fields. " +
-  "If the user asks for 'any road', 'all roads', or similar generic queries, use find_asset with by='search', value='', and type='Road'. " +
-  "If the user asks for 'one road', 'a single road', or 'just one', use find_asset with by='search', value='', type='Road', and limit=1. " +
+  "If the user asks for 'any road', 'all roads', or similar generic queries, use find_asset with by='search', value='', and type='road'. " +
+  "If the user asks for 'one road', 'a single road', or 'just one', use find_asset with by='search', value='', type='road', and limit=1. " +
   "Be concise and action-oriented.";
 
 interface ProxyRequestBody {
