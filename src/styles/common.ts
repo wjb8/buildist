@@ -408,6 +408,12 @@ export const inputStyles = StyleSheet.create({
     minHeight: 40,
   },
 
+  multiline: {
+    minHeight: spacing.xl * 3,
+    paddingVertical: spacing.sm,
+    textAlignVertical: "top",
+  },
+
   focused: {
     borderColor: colors.primary.main,
     borderWidth: 2,

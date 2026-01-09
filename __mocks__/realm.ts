@@ -1,15 +1,25 @@
 class MockObjectId {
-  private _id?: string;
+  private static counter = 0;
+  private _id: string;
   constructor(id?: string) {
-    this._id = id;
+    if (id) {
+      this._id = id;
+    } else {
+      MockObjectId.counter += 1;
+      this._id = `mockid-${MockObjectId.counter}`;
+    }
   }
   toHexString() {
-    return this._id || "mockid";
+    return this._id;
+  }
+  toString() {
+    return this._id;
   }
 }
 
 export default class Realm {
   static BSON = { ObjectId: MockObjectId };
+  static Object = class {};
   write(fn: () => void) {
     fn();
   }

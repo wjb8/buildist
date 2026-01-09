@@ -3,7 +3,7 @@ export const CREATE_ROAD_TOOL = {
   name: "create_road",
   parameters: {
     type: "object",
-    required: ["name", "condition", "surfaceType", "trafficVolume"],
+    required: ["name", "condition"],
     properties: {
       name: { type: "string" },
       location: { type: "string" },

@@ -41,38 +41,79 @@ jest.mock("openai", () => ({
   })),
 }));
 
+// Mock Expo vector icons (ESM) for Jest
+jest.mock("@expo/vector-icons", () => {
+  const React = require("react");
+  const MockIcon = (props: any) => React.createElement("Icon", props, null);
+  return {
+    __esModule: true,
+    MaterialIcons: MockIcon,
+    FontAwesome: MockIcon,
+    AntDesign: MockIcon,
+    Ionicons: MockIcon,
+  };
+});
+
 // Force Jest to use our manual mock for the native Realm module
 jest.mock("realm");
 
 // Mock getRealm to avoid loading native bindings during tests
 jest.mock("@/storage/realm", () => {
-  const records: Record<string, any[]> = { Road: [], Vehicle: [] };
+  const records: Record<string, unknown[]> = { Asset: [], Inspection: [] };
+
+  type MockResults<T> = T[] & {
+    filtered: (_q: string, val: unknown) => MockResults<T>;
+    map: <U>(fn: (value: T, index: number, array: T[]) => U) => U[];
+  };
+
+  const makeResults = <T>(arr: T[]): MockResults<T> => {
+    const results = [...arr] as MockResults<T>;
+    results.filtered = (_q: string, val: unknown) => {
+      const filtered = arr.filter((o) => {
+        if (!o || typeof o !== "object") return false;
+        return Object.values(o as Record<string, unknown>).includes(val);
+      });
+      return makeResults(filtered);
+    };
+    results.map = <U>(fn: (value: T, index: number, array: T[]) => U) =>
+      Array.prototype.map.call(results, fn) as U[];
+    return results;
+  };
+
   const realm = {
     write: (fn: () => void) => fn(),
-    create: (type: string, obj: any) => {
+    create: (type: string, obj: unknown) => {
       records[type] = records[type] || [];
       records[type].push(obj);
     },
     objects: (type: string) => {
       const arr = records[type] || [];
-      return {
-        filtered: (_q: string, val: any) => ({
-          map: (fn: (x: any) => any) => arr.filter((o) => Object.values(o).includes(val)).map(fn),
-        }),
-        map: (fn: (x: any) => any) => arr.map(fn),
-      };
+      return makeResults(arr);
     },
-    objectForPrimaryKey: (type: string, id: any) => {
+    objectForPrimaryKey: (type: string, id: unknown) => {
       const arr = records[type] || [];
-      const want = typeof id?.toHexString === "function" ? id.toHexString() : id;
+      const maybeId = id as { toHexString?: () => string } | null;
+      const want = typeof maybeId?.toHexString === "function" ? maybeId.toHexString() : id;
       return (
         arr.find((o) => {
-          const got = typeof o?._id?.toHexString === "function" ? o._id.toHexString() : o?._id;
+          const rec = o as Record<string, unknown> | null;
+          const maybeObjId = rec?._id as { toHexString?: () => string } | null;
+          const got =
+            typeof maybeObjId?.toHexString === "function" ? maybeObjId.toHexString() : rec?._id;
           return got === want;
         }) || null
       );
     },
-    delete: (_obj: any) => {},
+    delete: (obj: unknown) => {
+      if (Array.isArray(obj)) {
+        obj.forEach((item) => realm.delete(item));
+        return;
+      }
+      const typeKeys = Object.keys(records);
+      for (const t of typeKeys) {
+        records[t] = (records[t] || []).filter((o) => o !== obj);
+      }
+    },
   };
   return { getRealm: jest.fn().mockResolvedValue(realm) };
 });

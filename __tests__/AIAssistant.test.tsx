@@ -20,18 +20,15 @@ jest.mock("@/services/AIService", () => {
         if (mockCall === 1) {
           return {
             type: "text",
-            messages: [
-              "What is the road name?",
-              'DRAFT_JSON: {"condition":"good","surfaceType":"asphalt"}',
-            ],
+            messages: ["What is the road name?", 'DRAFT_JSON: {"condition":"good"}'],
           };
         }
         if (mockCall === 2) {
           return {
             type: "text",
             messages: [
-              "What is the traffic volume?",
-              'DRAFT_JSON: {"name":"Main St","condition":"good","surfaceType":"asphalt"}',
+              "Any notes to include?",
+              'DRAFT_JSON: {"name":"Main St","condition":"good"}',
             ],
           };
         }
@@ -39,7 +36,7 @@ jest.mock("@/services/AIService", () => {
           type: "text",
           messages: [
             "Thanks.",
-            'DRAFT_JSON: {"name":"Main St","condition":"good","surfaceType":"asphalt","trafficVolume":"low"}',
+            'DRAFT_JSON: {"name":"Main St","condition":"good","notes":"Near the downtown core"}',
           ],
         };
       });
@@ -54,7 +51,9 @@ describe("AIAssistant", () => {
   });
 
   it("clears input after send and shows draft card", async () => {
-    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(<AIAssistant />);
+    const { getByPlaceholderText, getByText, queryByDisplayValue, findByText } = render(
+      <AIAssistant />
+    );
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
     );
@@ -65,7 +64,7 @@ describe("AIAssistant", () => {
     await findByText("Draft road details");
   });
 
-  it("auto-proposes when required fields are complete", async () => {
+  it("creates a proposal via the draft form when required fields are complete", async () => {
     const { getByPlaceholderText, getByText, findByText } = render(<AIAssistant />);
     const input = getByPlaceholderText(
       "Describe what you want to do (e.g., create, update, or find an asset...)"
@@ -81,12 +80,20 @@ describe("AIAssistant", () => {
     fireEvent.press(getByText("Send"));
     await findByText("Draft road details");
 
-    // Third send -> add trafficVolume; auto-proposal should appear
-    fireEvent.changeText(input, "traffic is low");
+    // Third send -> add notes; create should now be possible
+    fireEvent.changeText(input, "notes are Near the downtown core");
     fireEvent.press(getByText("Send"));
 
+    // Wait for assistant response + draft merge to complete
+    await findByText("Thanks.");
+
+    // Draft is hidden by default; open it to create from the draft values.
+    fireEvent.press(getByText("Review details"));
+    await findByText("Draft road details");
+
+    fireEvent.press(getByText("Create from draft"));
     await findByText("Proposed action");
-    await findByText("create_road");
+    await findByText("Create road");
   });
 
   it("resets state with Reset button", async () => {
@@ -96,12 +103,15 @@ describe("AIAssistant", () => {
     );
     fireEvent.changeText(input, "hello");
     fireEvent.press(getByText("Send"));
+    await waitFor(() => expect(queryByText("Review details")).not.toBeNull());
+    fireEvent.press(getByText("Review details"));
     await waitFor(() => expect(queryByText("Draft road details")).not.toBeNull());
 
     fireEvent.press(getByText("Reset"));
+    await waitFor(() => expect(queryByText("Review details")).not.toBeNull());
     await waitFor(() => expect(queryByText("Draft road details")).toBeNull());
+    fireEvent.press(getByText("Review details"));
+    const roadName = getByPlaceholderText("e.g., Cedar Lane");
+    await waitFor(() => expect(roadName.props.value).toBe(""));
   });
 });
-
-
-

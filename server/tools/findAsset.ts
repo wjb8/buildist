@@ -1,7 +1,7 @@
 export const FIND_ASSET_TOOL = {
   type: "function",
   name: "find_asset",
-  description: "Search for assets by any field. Use this tool when the user wants to find, search, list, show, get, or retrieve assets. Use 'search' for general queries - it searches across all fields (name, location, condition, notes, surfaceType, trafficVolume, identifier, etc.) with fuzzy matching. If the user asks for 'any road', 'one road', 'all roads', or similar generic queries without a specific search term, use by='search' with value='' (empty string) and type='Road' to return all roads. If the user asks for 'one' or 'a single' asset, set limit=1. Similarly for vehicles.",
+  description: "Search for assets by any field. Use this tool when the user wants to find, search, list, show, get, or retrieve assets. Use 'search' for general queries - it searches across all fields (name, location, condition, notes, identifier, etc.) with fuzzy matching. If the user asks for 'any road', 'one road', 'all roads', or similar generic queries without a specific search term, use by='search' with value='' (empty string) and type='road' to return all roads. If the user asks for 'one' or 'a single' asset, set limit=1.",
   parameters: {
     type: "object",
     required: ["by", "value"],
@@ -17,8 +17,16 @@ export const FIND_ASSET_TOOL = {
       },
       type: { 
         type: "string", 
-        enum: ["Road", "Vehicle"],
-        description: "Optional: filter by asset type. If the user mentions 'road' or 'vehicle', use that. If omitted, searches all asset types."
+        enum: [
+          "road",
+          "vehicle",
+          "bridge",
+          "sidewalk",
+          "street_light",
+          "traffic_signal",
+          "other",
+        ],
+        description: "Optional: filter by asset type. If the user mentions an asset type, use that. If omitted, searches all asset types."
       },
       limit: {
         type: "number",

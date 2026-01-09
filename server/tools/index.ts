@@ -1,9 +1,18 @@
 import { CREATE_ROAD_TOOL } from "./createRoad";
 import { UPDATE_ROAD_TOOL } from "./updateRoad";
+import { UPDATE_ROAD_BY_TOOL } from "./updateRoadBy";
 import { DELETE_ASSET_TOOL } from "./deleteAsset";
+import { DELETE_ROAD_BY_TOOL } from "./deleteRoadBy";
 import { FIND_ASSET_TOOL } from "./findAsset";
 
-export { CREATE_ROAD_TOOL, UPDATE_ROAD_TOOL, DELETE_ASSET_TOOL, FIND_ASSET_TOOL };
+export {
+  CREATE_ROAD_TOOL,
+  UPDATE_ROAD_TOOL,
+  UPDATE_ROAD_BY_TOOL,
+  DELETE_ASSET_TOOL,
+  DELETE_ROAD_BY_TOOL,
+  FIND_ASSET_TOOL,
+};
 
 export interface OpenAIToolDefinition {
   type: "function";
@@ -30,7 +39,9 @@ export interface OpenAIToolDefinition {
 export const TOOL_DEFINITIONS: OpenAIToolDefinition[] = [
   CREATE_ROAD_TOOL,
   UPDATE_ROAD_TOOL,
+  UPDATE_ROAD_BY_TOOL,
   DELETE_ASSET_TOOL,
+  DELETE_ROAD_BY_TOOL,
   FIND_ASSET_TOOL,
 ] as OpenAIToolDefinition[];
 

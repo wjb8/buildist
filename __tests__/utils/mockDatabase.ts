@@ -1,22 +1,17 @@
-import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
-import { Road } from "@/storage/models/assets/Road";
+import { AssetCondition, AssetType } from "@/types/asset";
+import { Asset } from "@/storage/models/assets/Asset";
 import { Inspection } from "@/storage/models/Inspection";
 import Realm from "realm";
 
-export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
-  const mockRoad = {
+export const createMockAsset = (overrides: Partial<Asset> = {}): Asset => {
+  const mockAsset = {
     _id: new Realm.BSON.ObjectId(),
+    type: AssetType.ROAD,
     name: "Main Street",
     location: "Downtown",
     condition: AssetCondition.GOOD,
     notes: "Primary arterial road",
     qrTagId: "ROA-123",
-    surfaceType: RoadSurfaceType.ASPHALT,
-    trafficVolume: TrafficVolume.HIGH,
-    length: 1000,
-    width: 12,
-    lanes: 4,
-    speedLimit: 50,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     synced: true,
@@ -26,61 +21,32 @@ export const createMockRoad = (overrides: Partial<Road> = {}): Road => {
     destroyPermanently: jest.fn(),
 
     // Mock computed properties
-    get isRoadAsset() {
-      return true;
+    get assetType() {
+      return this.type as AssetType;
     },
-    get roadDimensions() {
-      return "1000m × 12m";
-    },
-    get trafficLevel() {
-      return "High traffic (arterial)";
-    },
-    get conditionScore() {
-      return 4;
-    },
-    get maintenancePriority() {
-      return "LOW - Standard maintenance";
-    },
-    get estimatedMaintenanceCost() {
-      return 2000;
-    },
-    get nextInspectionDue() {
-      return new Date("2025-01-01");
-    },
-
-    validateRoadData() {
-      return {
-        isValid: true,
-        errors: [],
-      };
-    },
-
-    // Mock business logic methods
-    markAsNeedsMaintenance: jest.fn(),
-    updateCondition: jest.fn(),
     generateQRTagId() {
       return "ROA-123";
     },
 
-    // Mock inspections relationship
-    inspections: [],
-
     ...overrides,
-  } as Road;
+  } as Asset;
 
-  return mockRoad;
+  return mockAsset;
 };
 
-export const createMockRoadList = (count: number = 3): Road[] => {
+export const createMockAssetList = (count: number = 3): Asset[] => {
   return Array.from({ length: count }, (_, index) => {
-    return createMockRoad({
-      name: `Road ${index + 1}`,
+    return createMockAsset({
+      name: `Asset ${index + 1}`,
       location: `Location ${index + 1}`,
     });
   });
 };
 
-export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspection => {
+export const createMockRoad = createMockAsset;
+export const createMockRoadList = createMockAssetList;
+
+export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspection & { update: jest.Mock; destroyPermanently: jest.Mock } => {
   const mockInspection = {
     _id: new Realm.BSON.ObjectId(),
     assetId: "road-1",
@@ -93,6 +59,7 @@ export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspe
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     synced: true,
+    photos: [],
 
     // Mock methods used in tests
     update: jest.fn((fn?: () => void) => {
@@ -101,7 +68,7 @@ export const createMockInspection = (overrides: Partial<Inspection> = {}): Inspe
     destroyPermanently: jest.fn(),
 
     ...overrides,
-  } as unknown as Inspection;
+  } as unknown as Inspection & { update: jest.Mock; destroyPermanently: jest.Mock };
 
   return mockInspection;
 };

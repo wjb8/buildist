@@ -1,47 +1,22 @@
-import Realm from "realm";
-import { AssetCondition } from "@/types/asset";
+/**
+ * Vehicle Model (Phase 1)
+ *
+ * Plain TypeScript class extending Asset for type safety and future extensibility.
+ * NOT stored in Realm during Phase 1 - only generic Asset instances are stored.
+ * See Asset.ts for architecture details.
+ */
+import { AssetType } from "@/types/asset";
 import { VehiclePriority } from "@/types/vehicle";
+import { Asset } from "./Asset";
 
-export class Vehicle extends Realm.Object {
-  static schema: Realm.ObjectSchema = {
-    name: "Vehicle",
-    primaryKey: "_id",
-    properties: {
-      _id: "objectId",
-      name: "string", // display name
-      identifier: "string", // e.g., Snowplow Truck #3
-      location: "string?",
-      condition: "string", // AssetCondition
-      notes: "string?",
-      qrTagId: "string?",
-      mileage: "double?",
-      hours: "double?",
-      lastServiceDate: "date?",
-      requiresService: "bool?",
-      priority: "string?", // VehiclePriority
-      photoUris: "string[]",
-      createdAt: "date",
-      updatedAt: "date",
-      synced: "bool",
-    },
-  };
-
-  _id!: Realm.BSON.ObjectId;
-  name!: string;
+export class Vehicle extends Asset {
   identifier!: string;
-  location?: string;
-  condition!: AssetCondition;
-  notes?: string;
-  qrTagId?: string;
   mileage?: number;
   hours?: number;
   lastServiceDate?: Date;
   requiresService?: boolean;
   priority?: VehiclePriority;
   photoUris!: string[];
-  createdAt!: Date;
-  updatedAt!: Date;
-  synced!: boolean;
 
   generateQRTagId(): string {
     const timestamp = Date.now().toString(36);

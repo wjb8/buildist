@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ScrollView, RefreshControl, Modal, Pressable } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, View as RNView } from "react-native";
 import { useRealm, useQuery } from "@realm/react";
 import { FontAwesome } from "@expo/vector-icons";
 import { View } from "./View";
@@ -12,14 +12,12 @@ import { Input } from "./Input";
 import Select from "./Select";
 import QRCodeDisplay from "./QRCodeDisplay";
 import NewInspectionForm from "./NewInspectionForm";
-import EditRoadForm from "./EditRoadForm";
-import EditVehicleForm from "./EditVehicleForm";
+import EditAssetForm from "./EditAssetForm";
 import InspectionDetail from "./InspectionDetail";
 import AllInspections from "./AllInspections";
 import { layoutStyles, colors, spacing } from "@/styles";
-import { AssetCondition, TrafficVolume } from "@/types";
-import { Road } from "@/storage/models/assets/Road";
-import { Vehicle } from "@/storage/models/assets/Vehicle";
+import { AssetCondition, AssetType } from "@/types/asset";
+import { Asset } from "@/storage/models/assets/Asset";
 import { Inspection } from "@/storage/models/Inspection";
 import Realm from "realm";
 import {
@@ -35,21 +33,32 @@ interface AssetListProps {
   focusQrTagId?: string;
 }
 
+const styles = StyleSheet.create({
+  headerTitleText: {
+    flexShrink: 1,
+  },
+  conditionDot: {
+    width: spacing.md,
+    height: spacing.md,
+    borderRadius: spacing.md / 2,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+});
+
 export default function AssetList({ onRefresh, refreshing, focusQrTagId }: AssetListProps) {
   const realm = useRealm();
-  const roads = useQuery(Road);
-  const vehicles = useQuery(Vehicle);
+  const assets = useQuery(Asset);
   const allInspections = useQuery(Inspection);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState<Set<string>>(new Set());
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<"attention" | "all">("attention");
-  const [editingRoadId, setEditingRoadId] = useState<string | null>(null);
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
   const [showAllInspections, setShowAllInspections] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [assetTypeFilter, setAssetTypeFilter] = useState("all");
-  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [assetTypeFilter, setAssetTypeFilter] = useState<AssetType | "all">("all");
 
   const getConditionColor = (condition: AssetCondition) => {
     switch (condition) {
@@ -64,18 +73,29 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     }
   };
 
-  const getTrafficVolumeColor = (volume: TrafficVolume) => {
-    switch (volume) {
-      case TrafficVolume.LOW:
-        return "success";
-      case TrafficVolume.MEDIUM:
-        return "warning";
-      case TrafficVolume.HIGH:
-        return "warning";
-      case TrafficVolume.VERY_HIGH:
-        return "error";
+  const getConditionDotColor = (condition: AssetCondition) => {
+    switch (condition) {
+      case AssetCondition.GOOD:
+        return colors.success.lighter;
+      case AssetCondition.FAIR:
+        return colors.warning.lighter;
+      case AssetCondition.POOR:
+        return colors.error.lighter;
       default:
-        return "secondary";
+        return colors.neutral.lighter;
+    }
+  };
+
+  const getConditionLabel = (condition: AssetCondition) => {
+    switch (condition) {
+      case AssetCondition.GOOD:
+        return "Good";
+      case AssetCondition.FAIR:
+        return "Fair";
+      case AssetCondition.POOR:
+        return "Poor";
+      default:
+        return "Unknown";
     }
   };
 
@@ -83,22 +103,39 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     return date.toLocaleDateString();
   };
 
-  // When focusQrTagId is provided, expand and highlight the matching asset
+  const getAssetTypeLabel = (type: AssetType) => {
+    switch (type) {
+      case AssetType.ROAD:
+        return "Road";
+      case AssetType.VEHICLE:
+        return "Vehicle";
+      case AssetType.BRIDGE:
+        return "Bridge";
+      case AssetType.SIDEWALK:
+        return "Sidewalk";
+      case AssetType.STREET_LIGHT:
+        return "Street Light";
+      case AssetType.TRAFFIC_SIGNAL:
+        return "Traffic Signal";
+      case AssetType.OTHER:
+        return "Other";
+      default:
+        return type;
+    }
+  };
+
   if (focusQrTagId && !expandedAssetId) {
-    const match = roads.filtered("qrTagId == $0", focusQrTagId)[0] as Road | undefined;
-    const vmatch = vehicles.filtered("qrTagId == $0", focusQrTagId)[0] as Vehicle | undefined;
-    if (match || vmatch) {
-      const idHex = ((match || vmatch)!._id as any).toHexString();
+    const match = assets.filtered("qrTagId == $0", focusQrTagId)[0] as Asset | undefined;
+    if (match) {
+      const idHex = match._id.toHexString();
       setExpandedAssetId(idHex);
       setHighlightedAssetId(idHex);
       setTimeout(() => setHighlightedAssetId(null), 2000);
     }
   }
 
-  // Precompute latest inspection per asset
   const latestInspectionByAssetId = useMemo(() => {
     const map = new Map<string, Inspection>();
-    // Sort once by timestamp desc
     const sorted = [...allInspections].sort(
       (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
     );
@@ -108,121 +145,90 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
     return map;
   }, [allInspections]);
 
-  // Compute attention metadata and sorting
-  const computedRoads = useMemo(() => {
-    return roads.map((road) => {
-      const idHex = road._id.toHexString();
+  const computedAssets = useMemo(() => {
+    return assets.map((asset) => {
+      const idHex = asset._id.toHexString();
       const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
-      const flags = getAttentionFlags(road as any, latestInspection, defaultAttentionConfig);
+      const flags = getAttentionFlags(asset, latestInspection, defaultAttentionConfig);
       const attentionScore = computeAttentionScore(
-        road as any,
+        asset,
         flags,
         latestInspection,
         defaultAttentionConfig
       );
-      return { road, latestInspection, flags, attentionScore };
+      return { asset, latestInspection, flags, attentionScore };
     });
-  }, [roads, latestInspectionByAssetId]);
+  }, [assets, latestInspectionByAssetId]);
 
-  const attentionRoads = useMemo(
+  const attentionAssets = useMemo(
     () =>
-      computedRoads
+      computedAssets
         .filter(
-          (r) => r.flags.overdue || r.flags.dueSoon || r.flags.maintenance || r.flags.poorCondition
+          (a) => a.flags.overdue || a.flags.dueSoon || a.flags.maintenance || a.flags.poorCondition
         )
         .sort((a, b) => b.attentionScore - a.attentionScore),
-    [computedRoads]
+    [computedAssets]
   );
 
-  const allRoadsSorted = useMemo(
-    () => [...computedRoads].sort((a, b) => b.attentionScore - a.attentionScore),
-    [computedRoads]
+  const allAssetsSorted = useMemo(
+    () => [...computedAssets].sort((a, b) => b.attentionScore - a.attentionScore),
+    [computedAssets]
   );
 
-  const vehicleCards = useMemo(() => {
-    return vehicles.map((veh) => {
-      const idHex = veh._id.toHexString();
-      const latestInspection = latestInspectionByAssetId.get(idHex) ?? null;
-      const flags = getAttentionFlags(veh as any, latestInspection, defaultAttentionConfig);
-      const attentionScore = computeAttentionScore(
-        veh as any,
-        flags,
-        latestInspection,
-        defaultAttentionConfig
-      );
-      return { veh, latestInspection, flags, attentionScore };
-    });
-  }, [vehicles, latestInspectionByAssetId]);
+  const filteredAssets = useMemo(() => {
+    let filtered = mode === "attention" ? attentionAssets : allAssetsSorted;
 
-  // Apply search and asset type filtering
-  const filteredRoads = useMemo(() => {
-    let filtered = mode === "attention" ? attentionRoads : allRoadsSorted;
-
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter((item) => {
-        const road = item.road;
+        const asset = item.asset;
         return (
-          road.name.toLowerCase().includes(query) ||
-          (road.location && road.location.toLowerCase().includes(query)) ||
-          (road.qrTagId && road.qrTagId.toLowerCase().includes(query))
+          asset.name.toLowerCase().includes(query) ||
+          (asset.location && asset.location.toLowerCase().includes(query)) ||
+          (asset.qrTagId && asset.qrTagId.toLowerCase().includes(query)) ||
+          asset.type.toLowerCase().includes(query)
         );
       });
     }
 
-    return filtered;
-  }, [mode, attentionRoads, allRoadsSorted, searchQuery, assetTypeFilter]);
-
-  const filteredVehicles = useMemo(() => {
-    let list = vehicleCards;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        ({ veh }) =>
-          veh.name.toLowerCase().includes(q) ||
-          (veh.location && veh.location.toLowerCase().includes(q)) ||
-          (veh.qrTagId && veh.qrTagId.toLowerCase().includes(q)) ||
-          veh.identifier.toLowerCase().includes(q)
-      );
+    if (assetTypeFilter !== "all") {
+      filtered = filtered.filter((item) => item.asset.type === assetTypeFilter);
     }
 
-    return list.sort((a, b) => b.attentionScore - a.attentionScore);
-  }, [vehicleCards, searchQuery]);
+    return filtered;
+  }, [mode, attentionAssets, allAssetsSorted, searchQuery, assetTypeFilter]);
 
-  const displayed = useMemo(() => {
-    if (assetTypeFilter === "roads") return filteredRoads;
-    if (assetTypeFilter === "vehicles") return filteredVehicles;
-    return [
-      ...filteredRoads.map((r) => ({ type: "road" as const, data: r })),
-      ...filteredVehicles.map((v) => ({ type: "vehicle" as const, data: v })),
-    ];
-  }, [filteredRoads, filteredVehicles, assetTypeFilter]);
-
-  if (roads.length === 0) {
+  if (assets.length === 0) {
     return (
       <View center style={[layoutStyles.centerContainer]}>
         <Text variant="h4" color="neutral" center style={[layoutStyles.mb2]}>
-          No Road Assets Found
+          No Assets Found
         </Text>
         <Text variant="body" color="neutral" center>
-          Create your first road asset using the form above
+          Create your first asset using the form above
         </Text>
       </View>
     );
   }
 
+  const assetTypeOptions = [
+    { value: "all", label: "All Types" },
+    { value: AssetType.ROAD, label: "Roads" },
+    { value: AssetType.VEHICLE, label: "Vehicles" },
+    { value: AssetType.BRIDGE, label: "Bridges" },
+    { value: AssetType.SIDEWALK, label: "Sidewalks" },
+    { value: AssetType.STREET_LIGHT, label: "Street Lights" },
+    { value: AssetType.TRAFFIC_SIGNAL, label: "Traffic Signals" },
+    { value: AssetType.OTHER, label: "Other" },
+  ];
+
   return (
-    <ScrollView
-      style={[layoutStyles.flex]}
-      refreshControl={<RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />}
-    >
-      <View style={[layoutStyles.p4]}>
+    <View style={[layoutStyles.flex]}>
+      <View style={[layoutStyles.p4, layoutStyles.pt1, layoutStyles.pb2]}>
         <View style={[layoutStyles.mb2]}>
           <Text variant="h3">{mode === "attention" ? "Needs Attention" : "All Assets"}</Text>
         </View>
 
-        {/* Search and Filter Row */}
         <View style={[layoutStyles.mb3, { flexDirection: "row", gap: spacing.sm }]}>
           <View style={{ flex: 1 }}>
             <Input
@@ -232,15 +238,11 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
               style={{ marginBottom: 0 }}
             />
           </View>
-          <View style={{ width: 120 }}>
+          <View style={{ width: 140 }}>
             <Select
               value={assetTypeFilter}
-              onChange={setAssetTypeFilter}
-              options={[
-                { value: "all", label: "All Types" },
-                { value: "roads", label: "Roads" },
-                { value: "vehicles", label: "Vehicles" },
-              ]}
+              onChange={(value) => setAssetTypeFilter(value as AssetType | "all")}
+              options={assetTypeOptions}
             />
           </View>
         </View>
@@ -264,7 +266,7 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           </Button>
         </View>
 
-        {mode === "attention" && attentionRoads.length === 0 && (
+        {mode === "attention" && attentionAssets.length === 0 && (
           <View style={[layoutStyles.mb3]}>
             <Text variant="body" color="neutral" style={[layoutStyles.mb2]}>
               All assets are in good standing.
@@ -274,624 +276,292 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
             </Button>
           </View>
         )}
-
-        {assetTypeFilter !== "vehicles" &&
-          displayed
-            .filter((x: any) => (assetTypeFilter === "roads" ? true : x.type === "road"))
-            .map((wrap: any, index: number) => {
-              const { road, latestInspection, flags } = wrap.type ? wrap.data : wrap;
-              return (
-                <Card
-                  key={road._id.toString()}
-                  style={
-                    highlightedAssetId === road._id.toHexString()
-                      ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
-                      : [layoutStyles.mb3]
-                  }
-                >
-                  <View row style={[layoutStyles.mb2]}>
-                    <View style={[layoutStyles.flex]}>
-                      <Text variant="h4" style={[layoutStyles.mb1]}>
-                        {road.name}
-                      </Text>
-                      {road.location && (
-                        <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
-                          📍 {road.location}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Badge variant={getConditionColor(road.condition)}>
-                        {`Condition: ${
-                          road.condition === AssetCondition.GOOD
-                            ? "Good"
-                            : road.condition === AssetCondition.FAIR
-                            ? "Fair"
-                            : "Poor"
-                        }`}
-                      </Badge>
-                    </View>
-                  </View>
-
-                  {/* Attention reasons */}
-                  {(() => {
-                    const reasons = getAttentionReasonBadges(flags);
-                    if (reasons.length === 0) return null;
-                    const badgeVariant = (reason: string) => {
-                      if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
-                      if (reason === "Condition: Poor") return "error" as const;
-                      if (reason === "Due soon") return "warning" as const;
-                      return "secondary" as const;
-                    };
-                    return (
-                      <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
-                        {reasons.map((r) => (
-                          <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
-                            <Badge variant={badgeVariant(r)} size="small">
-                              {r}
-                            </Badge>
-                          </View>
-                        ))}
-                      </View>
-                    );
-                  })()}
-
-                  <View row style={[layoutStyles.mb2]}>
-                    <View style={[layoutStyles.flex]}>
-                      <Text variant="bodySmall" color="neutral">
-                        Surface Type
-                      </Text>
-                      <Text variant="body">{road.surfaceType}</Text>
-                    </View>
-                    <View style={[layoutStyles.flex]}>
-                      <Text variant="bodySmall" color="neutral">
-                        Traffic Volume
-                      </Text>
-                      <Badge variant={getTrafficVolumeColor(road.trafficVolume)} size="small">
-                        {road.trafficVolume}
-                      </Badge>
-                    </View>
-                  </View>
-
-                  {(road.length || road.width || road.lanes || road.speedLimit) && (
-                    <View row style={[layoutStyles.mb2]}>
-                      {road.length && (
-                        <View style={[layoutStyles.flex]}>
-                          <Text variant="bodySmall" color="neutral">
-                            Length
-                          </Text>
-                          <Text variant="body">{road.length}m</Text>
-                        </View>
-                      )}
-                      {road.width && (
-                        <View style={[layoutStyles.flex]}>
-                          <Text variant="bodySmall" color="neutral">
-                            Width
-                          </Text>
-                          <Text variant="body">{road.width}m</Text>
-                        </View>
-                      )}
-                      {road.lanes && (
-                        <View style={[layoutStyles.flex]}>
-                          <Text variant="bodySmall" color="neutral">
-                            Lanes
-                          </Text>
-                          <Text variant="body">{road.lanes}</Text>
-                        </View>
-                      )}
-                      {road.speedLimit && (
-                        <View style={[layoutStyles.flex]}>
-                          <Text variant="bodySmall" color="neutral">
-                            Speed Limit
-                          </Text>
-                          <Text variant="body">{road.speedLimit} km/h</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
-                  {road.notes && (
-                    <View style={[layoutStyles.mb2]}>
-                      <Text variant="bodySmall" color="neutral">
-                        Notes
-                      </Text>
-                      <Text variant="body">{road.notes}</Text>
-                    </View>
-                  )}
-
-                  {showQRCodes.has(road._id.toHexString()) && road.qrTagId && (
-                    <View style={[layoutStyles.mb3]}>
-                      <Divider style={[layoutStyles.mb2]} />
-                      <QRCodeDisplay qrTagId={road.qrTagId} assetName={road.name} size={150} />
-                    </View>
-                  )}
-
-                  <Divider style={[layoutStyles.my2]} />
-
-                  <View spaceBetween style={[layoutStyles.mb2]}>
-                    <View>
-                      <Text variant="bodySmall" color="neutral">
-                        Created {formatDate(road.createdAt)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      layoutStyles.mt2,
-                      { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-                    ]}
-                  >
-                    <Button
-                      variant={expandedAssetId === road._id.toHexString() ? "secondary" : "primary"}
-                      onPress={() =>
-                        setExpandedAssetId(
-                          expandedAssetId === road._id.toHexString() ? null : road._id.toHexString()
-                        )
-                      }
-                      size="small"
-                    >
-                      {expandedAssetId === road._id.toHexString()
-                        ? "Hide Inspection"
-                        : "Add Inspection"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => setEditingRoadId(road._id.toHexString())}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => setShowAllInspections(road._id.toHexString())}
-                    >
-                      View All
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => {
-                        const assetId = road._id.toHexString();
-                        setShowQRCodes((prev) => {
-                          const newSet = new Set(prev);
-                          if (newSet.has(assetId)) {
-                            newSet.delete(assetId);
-                          } else {
-                            newSet.add(assetId);
-                          }
-                          return newSet;
-                        });
-                      }}
-                    >
-                      <View row center style={{ gap: spacing.xs }}>
-                        <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
-                      </View>
-                    </Button>
-                  </View>
-
-                  {expandedAssetId === road._id.toHexString() && (
-                    <NewInspectionForm
-                      assetId={road._id.toHexString()}
-                      onCreated={() => setExpandedAssetId(null)}
-                    />
-                  )}
-
-                  {/* Inspections list */}
-                  <View style={[layoutStyles.mt2]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Recent Inspections
-                    </Text>
-                    {[...allInspections]
-                      .filter((i) => i.assetId === road._id.toHexString())
-                      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                      .slice(0, 3)
-                      .map((insp) => (
-                        <Pressable
-                          key={insp._id.toHexString()}
-                          onPress={() => setSelectedInspection(insp)}
-                          style={[
-                            layoutStyles.mt1,
-                            {
-                              padding: spacing.md,
-                              backgroundColor: colors.neutral.lightest,
-                              borderRadius: spacing.md,
-                              borderWidth: 1,
-                              borderColor: colors.border.light,
-                            },
-                          ]}
-                        >
-                          <Text variant="body">{insp.timestamp.toLocaleDateString()}</Text>
-                          <View
-                            row
-                            style={{ marginTop: spacing.xs, flexWrap: "wrap", gap: spacing.xs }}
-                          >
-                            <Badge
-                              variant={
-                                insp.score >= 4 ? "success" : insp.score >= 3 ? "warning" : "error"
-                              }
-                              size="small"
-                            >
-                              {`Condition: ${
-                                insp.score >= 4 ? "Good" : insp.score >= 3 ? "Fair" : "Poor"
-                              }`}
-                            </Badge>
-                            {insp.issueType && (
-                              <Badge
-                                variant={
-                                  insp.issueType === "potholes"
-                                    ? "error"
-                                    : insp.issueType === "cracks" || insp.issueType === "drainage"
-                                    ? "warning"
-                                    : "secondary"
-                                }
-                                size="small"
-                              >
-                                {`Issue: ${
-                                  insp.issueType === "potholes"
-                                    ? "Potholes"
-                                    : insp.issueType === "cracks"
-                                    ? "Cracks"
-                                    : insp.issueType === "drainage"
-                                    ? "Drainage"
-                                    : "Other"
-                                }`}
-                              </Badge>
-                            )}
-                            {insp.maintenanceNeeded && (
-                              <Badge variant="error" size="small">
-                                Maintenance
-                              </Badge>
-                            )}
-                            {insp.priority && (
-                              <Badge
-                                variant={
-                                  insp.priority === "high"
-                                    ? "error"
-                                    : insp.priority === "medium"
-                                    ? "warning"
-                                    : "success"
-                                }
-                                size="small"
-                              >
-                                {`Priority: ${insp.priority}`}
-                              </Badge>
-                            )}
-                            {insp.photos && insp.photos.length > 0 && (
-                              <Badge
-                                variant="secondary"
-                                size="small"
-                              >{`Photos: ${insp.photos.length}`}</Badge>
-                            )}
-                          </View>
-                          {insp.description && (
-                            <Text variant="bodySmall" color="neutral">
-                              {insp.description}
-                            </Text>
-                          )}
-                          <Text
-                            variant="bodySmall"
-                            color="primary"
-                            style={{ marginTop: spacing.xs }}
-                          >
-                            Tap to view details
-                          </Text>
-                        </Pressable>
-                      ))}
-                  </View>
-
-                  {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
-                </Card>
-              );
-            })}
-
-        {/* Vehicle cards */}
-        {assetTypeFilter !== "roads" &&
-          displayed
-            .filter((x: any) => (assetTypeFilter === "vehicles" ? true : x.type === "vehicle"))
-            .map((wrap: any, index: number) => {
-              const { veh, latestInspection, flags } = wrap.type ? wrap.data : wrap;
-              return (
-                <Card key={veh._id.toString()} style={[layoutStyles.mb3]}>
-                  <View row style={[layoutStyles.mb2]}>
-                    <View style={[layoutStyles.flex]}>
-                      <Text variant="h4" style={[layoutStyles.mb1]}>
-                        {veh.name}
-                      </Text>
-                      {veh.location && (
-                        <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
-                          📍 {veh.location}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Badge variant={getConditionColor(veh.condition as any)}>
-                        {`Condition: ${
-                          (veh.condition as any) === AssetCondition.GOOD
-                            ? "Good"
-                            : (veh.condition as any) === AssetCondition.FAIR
-                            ? "Fair"
-                            : "Poor"
-                        }`}
-                      </Badge>
-                    </View>
-                  </View>
-
-                  {/* Attention reasons */}
-                  {(() => {
-                    const reasons = getAttentionReasonBadges(flags);
-                    if (reasons.length === 0) return null;
-                    const badgeVariant = (reason: string) => {
-                      if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
-                      if (reason === "Condition: Poor") return "error" as const;
-                      if (reason === "Due soon") return "warning" as const;
-                      return "secondary" as const;
-                    };
-                    return (
-                      <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
-                        {reasons.map((r) => (
-                          <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
-                            <Badge variant={badgeVariant(r)} size="small">
-                              {r}
-                            </Badge>
-                          </View>
-                        ))}
-                      </View>
-                    );
-                  })()}
-
-                  <View row style={[layoutStyles.mb2]}>
-                    {typeof veh.mileage === "number" && (
-                      <View style={[layoutStyles.flex]}>
-                        <Text variant="bodySmall" color="neutral">
-                          Mileage
-                        </Text>
-                        <Text variant="body">{Math.round(veh.mileage)} km</Text>
-                      </View>
-                    )}
-                    {typeof veh.hours === "number" && (
-                      <View style={[layoutStyles.flex]}>
-                        <Text variant="bodySmall" color="neutral">
-                          Hours
-                        </Text>
-                        <Text variant="body">{Math.round(veh.hours)}</Text>
-                      </View>
-                    )}
-                    {veh.lastServiceDate && (
-                      <View style={[layoutStyles.flex]}>
-                        <Text variant="bodySmall" color="neutral">
-                          Last Service
-                        </Text>
-                        <Text variant="body">{veh.lastServiceDate.toLocaleDateString()}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {veh.notes && (
-                    <View style={[layoutStyles.mb2]}>
-                      <Text variant="bodySmall" color="neutral">
-                        Notes
-                      </Text>
-                      <Text variant="body">{veh.notes}</Text>
-                    </View>
-                  )}
-
-                  {showQRCodes.has(veh._id.toHexString()) && veh.qrTagId && (
-                    <View style={[layoutStyles.mb3]}>
-                      <Divider style={[layoutStyles.mb2]} />
-                      <QRCodeDisplay qrTagId={veh.qrTagId} assetName={veh.name} size={150} />
-                    </View>
-                  )}
-
-                  <Divider style={[layoutStyles.my2]} />
-
-                  <View spaceBetween style={[layoutStyles.mb2]}>
-                    <View>
-                      <Text variant="bodySmall" color="neutral">
-                        Created
-                      </Text>
-                      <Text variant="bodySmall">{formatDate(veh.createdAt)}</Text>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      layoutStyles.mt2,
-                      { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-                    ]}
-                  >
-                    <Button
-                      variant={expandedAssetId === veh._id.toHexString() ? "secondary" : "primary"}
-                      onPress={() =>
-                        setExpandedAssetId(
-                          expandedAssetId === veh._id.toHexString() ? null : veh._id.toHexString()
-                        )
-                      }
-                      size="small"
-                    >
-                      {expandedAssetId === veh._id.toHexString()
-                        ? "Hide Inspection"
-                        : "Add Inspection"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => setEditingVehicleId(veh._id.toHexString())}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => setShowAllInspections(veh._id.toHexString())}
-                    >
-                      View All
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onPress={() => {
-                        const assetId = veh._id.toHexString();
-                        setShowQRCodes((prev) => {
-                          const newSet = new Set(prev);
-                          if (newSet.has(assetId)) {
-                            newSet.delete(assetId);
-                          } else {
-                            newSet.add(assetId);
-                          }
-                          return newSet;
-                        });
-                      }}
-                    >
-                      <View row center style={{ gap: spacing.xs }}>
-                        <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
-                      </View>
-                    </Button>
-                  </View>
-
-                  {expandedAssetId === veh._id.toHexString() && (
-                    <NewInspectionForm
-                      assetId={veh._id.toHexString()}
-                      onCreated={() => setExpandedAssetId(null)}
-                    />
-                  )}
-
-                  {/* Inspections list */}
-                  <View style={[layoutStyles.mt2]}>
-                    <Text variant="bodySmall" color="neutral">
-                      Recent Inspections
-                    </Text>
-                    {[...allInspections]
-                      .filter((i) => i.assetId === veh._id.toHexString())
-                      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                      .slice(0, 3)
-                      .map((insp) => (
-                        <Pressable
-                          key={insp._id.toHexString()}
-                          onPress={() => setSelectedInspection(insp)}
-                          style={[
-                            layoutStyles.mt1,
-                            {
-                              padding: spacing.md,
-                              backgroundColor: colors.neutral.lightest,
-                              borderRadius: spacing.md,
-                              borderWidth: 1,
-                              borderColor: colors.border.light,
-                            },
-                          ]}
-                        >
-                          <Text variant="body">{insp.timestamp.toLocaleDateString()}</Text>
-                          <View
-                            row
-                            style={{ marginTop: spacing.xs, flexWrap: "wrap", gap: spacing.xs }}
-                          >
-                            <Badge
-                              variant={
-                                insp.score >= 4 ? "success" : insp.score >= 3 ? "warning" : "error"
-                              }
-                              size="small"
-                            >
-                              {`Condition: ${
-                                insp.score >= 4 ? "Good" : insp.score >= 3 ? "Fair" : "Poor"
-                              }`}
-                            </Badge>
-                            {insp.issueType && (
-                              <Badge
-                                variant={
-                                  insp.issueType === "potholes"
-                                    ? "error"
-                                    : insp.issueType === "cracks" || insp.issueType === "drainage"
-                                    ? "warning"
-                                    : "secondary"
-                                }
-                                size="small"
-                              >
-                                {`Issue: ${
-                                  insp.issueType === "potholes"
-                                    ? "Potholes"
-                                    : insp.issueType === "cracks"
-                                    ? "Cracks"
-                                    : insp.issueType === "drainage"
-                                    ? "Drainage"
-                                    : "Other"
-                                }`}
-                              </Badge>
-                            )}
-                            {insp.maintenanceNeeded && (
-                              <Badge variant="error" size="small">
-                                Maintenance
-                              </Badge>
-                            )}
-                            {insp.priority && (
-                              <Badge
-                                variant={
-                                  insp.priority === "high"
-                                    ? "error"
-                                    : insp.priority === "medium"
-                                    ? "warning"
-                                    : "success"
-                                }
-                                size="small"
-                              >
-                                {`Priority: ${insp.priority}`}
-                              </Badge>
-                            )}
-                            {insp.photos && insp.photos.length > 0 && (
-                              <Badge
-                                variant="secondary"
-                                size="small"
-                              >{`Photos: ${insp.photos.length}`}</Badge>
-                            )}
-                          </View>
-                          {insp.description && (
-                            <Text variant="bodySmall" color="neutral">
-                              {insp.description}
-                            </Text>
-                          )}
-                          <Text
-                            variant="bodySmall"
-                            color="primary"
-                            style={{ marginTop: spacing.xs }}
-                          >
-                            Tap to view details
-                          </Text>
-                        </Pressable>
-                      ))}
-                  </View>
-
-                  {index < displayed.length - 1 && <Divider style={[layoutStyles.mt3]} />}
-                </Card>
-              );
-            })}
       </View>
 
+      <FlatList
+        data={filteredAssets}
+        keyExtractor={(item) => item.asset._id.toString()}
+        refreshing={refreshing || false}
+        onRefresh={onRefresh}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[layoutStyles.p4, layoutStyles.pt0]}
+        renderItem={({ item, index }) => {
+          const { asset, latestInspection, flags } = item;
+          return (
+            <Card
+              style={
+                highlightedAssetId === asset._id.toHexString()
+                  ? [layoutStyles.mb3, { borderWidth: 2, borderColor: colors.primary.main }]
+                  : [layoutStyles.mb3]
+              }
+            >
+              <View row style={[layoutStyles.mb2]}>
+                <View style={[layoutStyles.flex]}>
+                  <View row style={[layoutStyles.mb1, { gap: spacing.xs }]}>
+                    <Badge variant="secondary" size="small">
+                      {getAssetTypeLabel(asset.type as AssetType)}
+                    </Badge>
+                    <Text variant="h4" style={styles.headerTitleText}>
+                      {asset.name}
+                    </Text>
+                  </View>
+                  {asset.location && (
+                    <Text variant="body" color="neutral" style={[layoutStyles.mb1]}>
+                      📍 {asset.location}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <RNView
+                    accessible
+                    accessibilityLabel={`Condition: ${getConditionLabel(asset.condition)}`}
+                    style={[styles.conditionDot, { backgroundColor: getConditionDotColor(asset.condition) }]}
+                  />
+                </View>
+              </View>
+
+              {(() => {
+                const reasons = getAttentionReasonBadges(flags);
+                if (reasons.length === 0) return null;
+                const badgeVariant = (reason: string) => {
+                  if (reason === "Overdue" || reason === "Maintenance") return "error" as const;
+                  if (reason === "Condition: Poor") return "error" as const;
+                  if (reason === "Due soon") return "warning" as const;
+                  return "secondary" as const;
+                };
+                return (
+                  <View row style={[layoutStyles.mb2, { flexWrap: "wrap" }]}>
+                    {reasons.map((r) => (
+                      <View key={r} style={{ marginRight: 8, marginBottom: 8 }}>
+                        <Badge variant={badgeVariant(r)} size="small">
+                          {r}
+                        </Badge>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
+
+              {asset.notes && (
+                <View style={[layoutStyles.mb2]}>
+                  <Text variant="bodySmall" color="neutral">
+                    Notes
+                  </Text>
+                  <Text variant="body">{asset.notes}</Text>
+                </View>
+              )}
+
+              {showQRCodes.has(asset._id.toHexString()) && asset.qrTagId && (
+                <View style={[layoutStyles.mb3]}>
+                  <Divider style={[layoutStyles.mb2]} />
+                  <QRCodeDisplay qrTagId={asset.qrTagId} assetName={asset.name} size={150} />
+                </View>
+              )}
+
+              <Divider style={[layoutStyles.my2]} />
+
+              <View spaceBetween style={[layoutStyles.mb2]}>
+                <View>
+                  <Text variant="bodySmall" color="neutral">
+                    Created {formatDate(asset.createdAt)}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  layoutStyles.mt2,
+                  { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+                ]}
+              >
+                <Button
+                  variant={expandedAssetId === asset._id.toHexString() ? "secondary" : "primary"}
+                  onPress={() =>
+                    setExpandedAssetId(
+                      expandedAssetId === asset._id.toHexString() ? null : asset._id.toHexString()
+                    )
+                  }
+                  size="small"
+                >
+                  {expandedAssetId === asset._id.toHexString()
+                    ? "Hide Inspection"
+                    : "Add Inspection"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onPress={() => setEditingAssetId(asset._id.toHexString())}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onPress={() => setShowAllInspections(asset._id.toHexString())}
+                >
+                  View All
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onPress={() => {
+                    const assetId = asset._id.toHexString();
+                    setShowQRCodes((prev) => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(assetId)) {
+                        newSet.delete(assetId);
+                      } else {
+                        newSet.add(assetId);
+                      }
+                      return newSet;
+                    });
+                  }}
+                >
+                  <View row center style={{ gap: spacing.xs }}>
+                    <FontAwesome name="qrcode" size={16} color={colors.primary.main} />
+                  </View>
+                </Button>
+              </View>
+
+              {expandedAssetId === asset._id.toHexString() && (
+                <NewInspectionForm
+                  assetId={asset._id.toHexString()}
+                  onCreated={() => setExpandedAssetId(null)}
+                />
+              )}
+
+              <View style={[layoutStyles.mt2]}>
+                <Text variant="bodySmall" color="neutral">
+                  Recent Inspections
+                </Text>
+                {[...allInspections]
+                  .filter((i) => i.assetId === asset._id.toHexString())
+                  .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                  .slice(0, 3)
+                  .map((insp) => (
+                    <Pressable
+                      key={insp._id.toHexString()}
+                      onPress={() => setSelectedInspection(insp)}
+                      style={[
+                        layoutStyles.mt1,
+                        {
+                          padding: spacing.md,
+                          backgroundColor: colors.neutral.lightest,
+                          borderRadius: spacing.md,
+                          borderWidth: 1,
+                          borderColor: colors.border.light,
+                        },
+                      ]}
+                    >
+                      <Text variant="body">{insp.timestamp.toLocaleDateString()}</Text>
+                      <View
+                        row
+                        style={{ marginTop: spacing.xs, flexWrap: "wrap", gap: spacing.xs }}
+                      >
+                        <Badge
+                          variant={
+                            insp.score >= 4 ? "success" : insp.score >= 3 ? "warning" : "error"
+                          }
+                          size="small"
+                        >
+                          {`Condition: ${
+                            insp.score >= 4 ? "Good" : insp.score >= 3 ? "Fair" : "Poor"
+                          }`}
+                        </Badge>
+                        {insp.issueType && (
+                          <Badge
+                            variant={
+                              insp.issueType === "potholes"
+                                ? "error"
+                                : insp.issueType === "cracks" || insp.issueType === "drainage"
+                                ? "warning"
+                                : "secondary"
+                            }
+                            size="small"
+                          >
+                            {`Issue: ${
+                              insp.issueType === "potholes"
+                                ? "Potholes"
+                                : insp.issueType === "cracks"
+                                ? "Cracks"
+                                : insp.issueType === "drainage"
+                                ? "Drainage"
+                                : "Other"
+                            }`}
+                          </Badge>
+                        )}
+                        {insp.maintenanceNeeded && (
+                          <Badge variant="error" size="small">
+                            Maintenance
+                          </Badge>
+                        )}
+                        {insp.priority && (
+                          <Badge
+                            variant={
+                              insp.priority === "high"
+                                ? "error"
+                                : insp.priority === "medium"
+                                ? "warning"
+                                : "success"
+                            }
+                            size="small"
+                          >
+                            {`Priority: ${insp.priority}`}
+                          </Badge>
+                        )}
+                        {insp.photos && insp.photos.length > 0 && (
+                          <Badge variant="secondary" size="small">
+                            {`Photos: ${insp.photos.length}`}
+                          </Badge>
+                        )}
+                      </View>
+                      {insp.description && (
+                        <Text variant="bodySmall" color="neutral">
+                          {insp.description}
+                        </Text>
+                      )}
+                      <Text variant="bodySmall" color="primary" style={{ marginTop: spacing.xs }}>
+                        Tap to view details
+                      </Text>
+                    </Pressable>
+                  ))}
+              </View>
+
+              {index < filteredAssets.length - 1 && <Divider style={[layoutStyles.mt3]} />}
+            </Card>
+          );
+        }}
+      />
+
       <Modal
-        visible={!!editingRoadId}
+        visible={!!editingAssetId}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setEditingRoadId(null)}
+        onRequestClose={() => setEditingAssetId(null)}
       >
-        {editingRoadId && (
-          <EditRoadForm
-            road={roads.filtered("_id == $0", new Realm.BSON.ObjectId(editingRoadId))[0] as Road}
-            onClose={() => setEditingRoadId(null)}
+        {editingAssetId && (
+          <EditAssetForm
+            asset={
+              assets.filtered(
+                "_id == $0",
+                new Realm.BSON.ObjectId(editingAssetId)
+              )[0] as Asset
+            }
+            onClose={() => setEditingAssetId(null)}
             onSaved={() => {
-              setHighlightedAssetId(editingRoadId);
+              setHighlightedAssetId(editingAssetId);
               setTimeout(() => setHighlightedAssetId(null), 1500);
             }}
           />
         )}
       </Modal>
 
-      {/* Inspection Detail Modal */}
       <InspectionDetail
         inspection={selectedInspection}
         visible={!!selectedInspection}
         onClose={() => setSelectedInspection(null)}
       />
 
-      {/* All Inspections Modal */}
       {showAllInspections && (
         <AllInspections
           inspections={allInspections.filter((i) => i.assetId === showAllInspections)}
@@ -900,30 +570,6 @@ export default function AssetList({ onRefresh, refreshing, focusQrTagId }: Asset
           onInspectionTap={setSelectedInspection}
         />
       )}
-
-      {/* Vehicle Edit Modal */}
-      <Modal
-        visible={!!editingVehicleId}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setEditingVehicleId(null)}
-      >
-        {editingVehicleId && (
-          <EditVehicleForm
-            vehicle={
-              vehicles.filtered(
-                "_id == $0",
-                new Realm.BSON.ObjectId(editingVehicleId)
-              )[0] as Vehicle
-            }
-            onClose={() => setEditingVehicleId(null)}
-            onSaved={() => {
-              setHighlightedAssetId(editingVehicleId);
-              setTimeout(() => setHighlightedAssetId(null), 1500);
-            }}
-          />
-        )}
-      </Modal>
-    </ScrollView>
+    </View>
   );
 }

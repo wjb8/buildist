@@ -1,4 +1,4 @@
-import { TouchableOpacity, TouchableOpacityProps } from "react-native";
+import { StyleSheet, TouchableOpacity, TouchableOpacityProps, ViewStyle } from "react-native";
 import type { ReactNode } from "react";
 import { buttonStyles, textStyles, colors, spacing } from "../styles";
 import { Text } from "./Text";
@@ -22,7 +22,8 @@ export const Button = ({
   ...props
 }: ButtonProps) => {
   const getButtonStyle = () => {
-    let baseStyle = { ...buttonStyles[variant] } as any;
+    const flattened = StyleSheet.flatten(buttonStyles[variant]) as ViewStyle | undefined;
+    let baseStyle: ViewStyle = { ...(flattened ?? {}) };
 
     if (disabled) {
       Object.assign(baseStyle, buttonStyles[`${variant}Disabled` as keyof typeof buttonStyles]);

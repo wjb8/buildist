@@ -3,8 +3,9 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Alert } from "react-native";
 import "react-native-get-random-values";
 import { RealmProvider } from "@realm/react";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { initRealm, schema, schemaVersion } from "@storage/realm";
-import { colors, spacing } from "./src/styles";
+import { colors, layoutStyles, spacing } from "./src/styles";
 import { View, Text, MainPage, LoginScreen } from "./src/components";
 import { getAuthState, clearAuthState } from "@/services/auth/storage";
 
@@ -101,14 +102,19 @@ export default function App() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <StatusBar style="light" />
-      {appState.isLoading && renderLoadingScreen()}
-      {appState.error && renderErrorScreen()}
-      {appState.isReady && !appState.isAuthenticated && (
-        <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      )}
-      {appState.isReady && appState.isAuthenticated && renderMainApp()}
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView
+        edges={["top"]}
+        style={[layoutStyles.flex, { backgroundColor: colors.background.primary }]}
+      >
+        <StatusBar style="auto" />
+        {appState.isLoading && renderLoadingScreen()}
+        {appState.error && renderErrorScreen()}
+        {appState.isReady && !appState.isAuthenticated && (
+          <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        )}
+        {appState.isReady && appState.isAuthenticated && renderMainApp()}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

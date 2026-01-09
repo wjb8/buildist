@@ -1,7 +1,13 @@
 import { AssetCondition } from "@/types/asset";
 import { RoadSurfaceType, TrafficVolume } from "@/types/road";
 
-export type ToolName = "create_road" | "update_road" | "delete_asset" | "find_asset";
+export type ToolName =
+  | "create_road"
+  | "update_road"
+  | "update_road_by"
+  | "delete_asset"
+  | "delete_road_by"
+  | "find_asset";
 
 export interface CreateRoadArgs {
   name: string;
@@ -9,8 +15,8 @@ export interface CreateRoadArgs {
   condition: AssetCondition;
   notes?: string;
   qrTagId?: string;
-  surfaceType: RoadSurfaceType;
-  trafficVolume: TrafficVolume;
+  surfaceType?: RoadSurfaceType;
+  trafficVolume?: TrafficVolume;
   length?: number;
   width?: number;
   lanes?: number;
@@ -22,22 +28,39 @@ export interface UpdateRoadArgs {
   fields: Partial<CreateRoadArgs>;
 }
 
+export interface UpdateRoadByArgs {
+  by: "id" | "name" | "nameContains" | "qrTagId" | "search";
+  value: string;
+  limit?: number;
+  fields: Partial<CreateRoadArgs>;
+}
+
+export interface DeleteRoadByArgs {
+  by: "id" | "name" | "nameContains" | "qrTagId" | "search";
+  value: string;
+  limit?: number;
+}
+
+import { AssetType } from "@/types/asset";
+
 export interface DeleteAssetArgs {
   _id: string;
-  type: "Road" | "Vehicle";
+  type: AssetType;
 }
 
 export interface FindAssetArgs {
   by: "id" | "name" | "nameContains" | "qrTagId" | "search";
   value: string;
-  type?: "Road" | "Vehicle";
+  type?: AssetType;
   limit?: number;
 }
 
 export type ToolArgs =
   | { name: "create_road"; arguments: CreateRoadArgs }
   | { name: "update_road"; arguments: UpdateRoadArgs }
+  | { name: "update_road_by"; arguments: UpdateRoadByArgs }
   | { name: "delete_asset"; arguments: DeleteAssetArgs }
+  | { name: "delete_road_by"; arguments: DeleteRoadByArgs }
   | { name: "find_asset"; arguments: FindAssetArgs };
 
 export interface ToolCall<T = unknown> {
@@ -50,7 +73,7 @@ export const createRoadJsonSchema = {
   name: "create_road",
   parameters: {
     type: "object",
-    required: ["name", "condition", "surfaceType", "trafficVolume"],
+    required: ["name", "condition"],
     properties: {
       name: { type: "string" },
       location: { type: "string" },

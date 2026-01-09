@@ -1,169 +1,84 @@
 import Realm from "realm";
 import { getRealm } from "@/storage/realm";
-import { AssetCondition, RoadSurfaceType, TrafficVolume } from "@/types";
-import { VehiclePriority } from "@/types/vehicle";
+import { AssetCondition, AssetType } from "@/types/asset";
 
 export const seedDemoData = async (forceReseed = false) => {
   try {
     const realm = await getRealm();
-    const existingRoads = realm.objects("Road");
-    const existingVehicles = realm.objects("Vehicle");
+    const existingAssets = realm.objects("Asset");
 
-    if ((existingRoads.length > 0 || existingVehicles.length > 0) && !forceReseed) {
+    if (existingAssets.length > 0 && !forceReseed) {
       console.log("Demo data already exists, skipping seeding");
       return;
     }
 
-    if (forceReseed && existingRoads.length > 0) {
+    if (forceReseed && existingAssets.length > 0) {
       console.log("Force reseeding - clearing existing data");
       realm.write(() => {
         realm.deleteAll();
       });
     }
 
-    const demoRoads = [
+    // Demo seed data for beta testing (seeded only when DB is empty).
+    const demoAssets = [
       {
+        type: AssetType.ROAD,
         name: "Main Street",
         location: "Downtown Business District",
         condition: AssetCondition.GOOD,
         notes: "Primary arterial road serving downtown area. Recently maintained.",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.HIGH,
-        length: 1200,
-        width: 12,
-        lanes: 4,
-        speedLimit: 50,
       },
       {
-        name: "Riverside Drive",
-        location: "Riverside Park Area",
-        condition: AssetCondition.GOOD,
-        notes: "Recently resurfaced scenic route along the river",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.MEDIUM,
-        length: 800,
-        width: 8,
-        lanes: 2,
-        speedLimit: 40,
-      },
-      {
+        type: AssetType.ROAD,
         name: "Industrial Boulevard",
         location: "Industrial Zone",
         condition: AssetCondition.POOR,
-        notes: "Heavy truck traffic causing surface deterioration. Requires immediate attention.",
-        surfaceType: RoadSurfaceType.CONCRETE,
-        trafficVolume: TrafficVolume.VERY_HIGH,
-        length: 2000,
-        width: 16,
-        lanes: 6,
-        speedLimit: 60,
+        notes: "Heavy truck traffic causing surface deterioration. Requires attention.",
       },
       {
-        name: "Cedar Lane - East Section",
-        location: "Residential District East",
+        type: AssetType.ROAD,
+        name: "Cedar Lane",
+        location: "Residential District",
         condition: AssetCondition.FAIR,
-        notes: "Residential street with moderate wear. Some drainage issues reported.",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.LOW,
-        length: 600,
-        width: 6,
-        lanes: 2,
-        speedLimit: 30,
+        notes: "Moderate wear with minor drainage issues reported by residents.",
       },
       {
+        type: AssetType.ROAD,
+        name: "Riverside Drive",
+        location: "Riverside Park Area",
+        condition: AssetCondition.GOOD,
+        notes: "Scenic route along the river. Light traffic and generally good surface.",
+      },
+      {
+        type: AssetType.ROAD,
         name: "Highway 101 - Northbound",
         location: "Interstate Highway",
         condition: AssetCondition.POOR,
-        notes: "Major highway with significant pothole damage. High priority for repair.",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.VERY_HIGH,
-        length: 5000,
-        width: 20,
-        lanes: 8,
-        speedLimit: 70,
-      },
-      {
-        name: "Oak Street",
-        location: "Historic District",
-        condition: AssetCondition.GOOD,
-        notes: "Historic cobblestone street in excellent condition",
-        surfaceType: RoadSurfaceType.CONCRETE,
-        trafficVolume: TrafficVolume.LOW,
-        length: 300,
-        width: 4,
-        lanes: 2,
-        speedLimit: 25,
-      },
-      {
-        name: "Commerce Avenue",
-        location: "Shopping District",
-        condition: AssetCondition.FAIR,
-        notes: "Commercial area with moderate traffic. Some surface cracking.",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.MEDIUM,
-        length: 900,
-        width: 10,
-        lanes: 4,
-        speedLimit: 35,
-      },
-      {
-        name: "School Road",
-        location: "Education District",
-        condition: AssetCondition.GOOD,
-        notes: "School zone road with good surface condition",
-        surfaceType: RoadSurfaceType.ASPHALT,
-        trafficVolume: TrafficVolume.MEDIUM,
-        length: 400,
-        width: 8,
-        lanes: 2,
-        speedLimit: 25,
+        notes: "High-speed corridor with recurring potholes. High priority for repair.",
       },
     ];
 
-    const roadIds: string[] = [];
+    const assetIds: string[] = [];
 
     realm.write(() => {
-      for (const roadData of demoRoads) {
-        const roadId = new Realm.BSON.ObjectId();
-        const qrTagId = generateQRTagId();
-        realm.create("Road", {
-          _id: roadId,
-          ...roadData,
+      for (const assetData of demoAssets) {
+        const assetId = new Realm.BSON.ObjectId();
+        const qrTagId = generateQRTagId(assetData.type);
+        realm.create("Asset", {
+          _id: assetId,
+          ...assetData,
           qrTagId,
           createdAt: new Date(),
           updatedAt: new Date(),
           synced: false,
         });
-        roadIds.push(roadId.toHexString());
+        assetIds.push(assetId.toHexString());
       }
-
-      // Seed one demo vehicle (Snowplow Truck #3)
-      const vehicleId = new Realm.BSON.ObjectId();
-      const vehicleQr = generateVehicleQR();
-      realm.create("Vehicle", {
-        _id: vehicleId,
-        name: "Snowplow Truck #3",
-        identifier: "Snowplow Truck #3",
-        location: "Municipal Garage",
-        condition: AssetCondition.FAIR,
-        notes: "Plow blade shows moderate wear. Oil change due soon.",
-        qrTagId: vehicleQr,
-        mileage: 48210,
-        hours: 1380,
-        lastServiceDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-        requiresService: true,
-        priority: VehiclePriority.HIGH,
-        photoUris: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        synced: false,
-      });
     });
 
-    // Add demo inspections to showcase different scenarios
-    await seedDemoInspections(realm, roadIds);
+    await seedDemoInspections(realm, assetIds);
 
-    console.log(`Seeded ${demoRoads.length} roads and 1 vehicle with inspections`);
+    console.log(`Seeded ${demoAssets.length} demo assets`);
   } catch (error) {
     console.error("Failed to seed demo data:", error);
   }
@@ -185,137 +100,86 @@ export const forceReseedDemoData = async () => {
   await seedDemoData(true);
 };
 
-const generateQRTagId = (): string => {
+const generateQRTagId = (type: AssetType): string => {
   const timestamp = Date.now().toString(36);
-  return `ROA-${timestamp}`;
+  const prefix = type.toUpperCase().substring(0, 3);
+  return `${prefix}-${timestamp}`;
 };
 
-const generateVehicleQR = (): string => {
-  const timestamp = Date.now().toString(36);
-  return `VEH-${timestamp}`;
-};
-
-const seedDemoInspections = async (realm: Realm, roadIds: string[]) => {
+const seedDemoInspections = async (realm: Realm, assetIds: string[]) => {
   const now = new Date();
-  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const demoInspections = [
-    {
-      assetId: roadIds[3], // Cedar Lane
-      inspector: "Sarah Johnson",
-      description:
-        "Drainage issues observed after heavy rainfall. Water pooling in several locations.",
-      score: 2,
-      timestamp: oneWeekAgo,
-      maintenanceNeeded: true,
-      issueType: "drainage",
-      priority: "high",
-      photos: [],
-      nextDue: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // Due in 1 week
-    },
-    {
-      assetId: roadIds[3], // Cedar Lane - previous inspection
-      inspector: "Mike Chen",
-      description: "General wear observed, minor cracking beginning to appear.",
-      score: 3,
-      timestamp: oneMonthAgo,
-      maintenanceNeeded: false,
-      issueType: "cracks",
-      priority: "medium",
-      photos: [],
-      nextDue: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-    },
-
-    // Highway 101 - High priority with potholes (triggers repair plan + council flag)
-    {
-      assetId: roadIds[4], // Highway 101
-      inspector: "Robert Martinez",
-      description:
-        "Severe pothole damage affecting traffic flow. Multiple large potholes in both lanes.",
-      score: 1,
-      timestamp: threeDaysAgo,
-      maintenanceNeeded: true,
-      issueType: "potholes",
-      priority: "high",
-      photos: [],
-      nextDue: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // Due in 3 days
-    },
-
-    // Industrial Boulevard - Poor condition (triggers repair plan)
-    {
-      assetId: roadIds[2], // Industrial Boulevard
-      inspector: "Lisa Thompson",
-      description:
-        "Heavy truck traffic causing significant surface damage. Multiple areas need resurfacing.",
-      score: 2,
-      timestamp: twoWeeksAgo,
-      maintenanceNeeded: true,
-      issueType: "other",
-      priority: "medium",
-      photos: [],
-      nextDue: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
-    },
-
-    // Main Street - Good condition, routine inspection
-    {
-      assetId: roadIds[0], // Main Street
-      inspector: "David Wilson",
-      description: "Routine inspection completed. Road in good condition with minor wear.",
-      score: 4,
-      timestamp: twoWeeksAgo,
-      maintenanceNeeded: false,
-      issueType: "none",
-      priority: "low",
-      photos: [],
-      nextDue: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
-    },
-
-    // Commerce Avenue - Fair condition with cracks
-    {
-      assetId: roadIds[6], // Commerce Avenue
-      inspector: "Jennifer Davis",
-      description: "Surface cracking observed in multiple locations. Monitor for progression.",
-      score: 3,
-      timestamp: oneWeekAgo,
-      maintenanceNeeded: false,
-      issueType: "cracks",
-      priority: "medium",
-      photos: [],
-      nextDue: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-    },
-
-    // Oak Street - Good condition, no issues
-    {
-      assetId: roadIds[5], // Oak Street
-      inspector: "Tom Anderson",
-      description: "Historic street in excellent condition. No maintenance required.",
-      score: 5,
-      timestamp: oneMonthAgo,
-      maintenanceNeeded: false,
-      issueType: "none",
-      priority: "low",
-      photos: [],
-      nextDue: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
-    },
-
-    // School Road - Overdue inspection (triggers overdue flag)
-    {
-      assetId: roadIds[7], // School Road
-      inspector: "Maria Rodriguez",
-      description: "Routine school zone inspection. Road in good condition.",
-      score: 4,
-      timestamp: threeMonthsAgo,
-      maintenanceNeeded: false,
-      issueType: "none",
-      priority: "low",
-      photos: [],
-      nextDue: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // Overdue by 1 week
-    },
-  ];
+    assetIds[0]
+      ? {
+          assetId: assetIds[0],
+          inspector: "Demo Inspector",
+          description: "Routine inspection completed. Road in good condition.",
+          score: 4,
+          timestamp: twoWeeksAgo,
+          maintenanceNeeded: false,
+          issueType: "none",
+          priority: "low",
+          photos: [],
+          nextDue: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[1]
+      ? {
+          assetId: assetIds[1],
+          inspector: "Demo Inspector",
+          description: "Severe surface deterioration observed. Repair recommended.",
+          score: 1,
+          timestamp: oneWeekAgo,
+          maintenanceNeeded: true,
+          issueType: "potholes",
+          priority: "high",
+          photos: [],
+          nextDue: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[2]
+      ? {
+          assetId: assetIds[2],
+          inspector: "Demo Inspector",
+          description: "Moderate wear observed. Monitor drainage and minor cracking.",
+          score: 3,
+          timestamp: oneWeekAgo,
+          maintenanceNeeded: false,
+          issueType: "drainage",
+          priority: "medium",
+          photos: [],
+          nextDue: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+    assetIds[4]
+      ? {
+          assetId: assetIds[4],
+          inspector: "Demo Inspector",
+          description: "Multiple potholes impacting traffic flow. Maintenance required.",
+          score: 2,
+          timestamp: twoWeeksAgo,
+          maintenanceNeeded: true,
+          issueType: "potholes",
+          priority: "high",
+          photos: [],
+          nextDue: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    assetId: string;
+    inspector: string;
+    description: string;
+    score: number;
+    timestamp: Date;
+    maintenanceNeeded: boolean;
+    nextDue?: Date;
+    issueType?: string;
+    priority?: string;
+    photos?: string[];
+  }>;
 
   realm.write(() => {
     for (const inspectionData of demoInspections) {
