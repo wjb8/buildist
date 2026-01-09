@@ -1,10 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-} from "react-native";
+import { useState, useEffect, useMemo } from "react";
+import { Alert, KeyboardAvoidingView, Platform, Modal } from "react-native";
 import { View } from "./View";
 import { Text } from "./Text";
 import { Button } from "./Button";
@@ -15,9 +10,24 @@ import AIAssistant from "./AIAssistant";
 import { colors, spacing, layoutStyles, textStyles, buttonStyles } from "@/styles";
 import { QRService } from "@/services/QRService";
 import { seedDemoData } from "@/utils/demoData";
+import * as Application from "expo-application";
+import Constants from "expo-constants";
 
 interface MainPageProps {
   onLogout: () => void;
+}
+
+function getBuildLabel(): string | null {
+  const configVersion =
+    Constants.expoConfig?.version ||
+    // fallback for older manifests
+    (Constants.manifest as any)?.version ||
+    "";
+  const version = configVersion || Application.nativeApplicationVersion || "";
+  const build = Application.nativeBuildVersion || "";
+  if (version && build) return `v${version} (${build})`;
+  if (version) return `v${version}`;
+  return null;
 }
 
 export default function MainPage({ onLogout }: MainPageProps) {
@@ -25,6 +35,7 @@ export default function MainPage({ onLogout }: MainPageProps) {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const buildLabel = useMemo(() => getBuildLabel(), []);
 
   // Seed demo data when component mounts
   useEffect(() => {
@@ -90,7 +101,14 @@ export default function MainPage({ onLogout }: MainPageProps) {
                   layoutStyles.mb2,
                 ]}
               >
-                <Text variant="h2">Buildist</Text>
+                <View row style={{ alignItems: "baseline" }}>
+                  <Text variant="h2">Buildist</Text>
+                  {buildLabel ? (
+                    <Text variant="caption" color="neutral" style={{ marginLeft: spacing.sm }}>
+                      {buildLabel}
+                    </Text>
+                  ) : null}
+                </View>
                 <Button
                   variant="primary"
                   onPress={onLogout}
@@ -157,7 +175,14 @@ export default function MainPage({ onLogout }: MainPageProps) {
                   layoutStyles.mb2,
                 ]}
               >
-                <Text variant="h2">Buildist</Text>
+                <View row style={{ alignItems: "baseline" }}>
+                  <Text variant="h2">Buildist</Text>
+                  {buildLabel ? (
+                    <Text variant="caption" color="neutral" style={{ marginLeft: spacing.sm }}>
+                      {buildLabel}
+                    </Text>
+                  ) : null}
+                </View>
                 <Button
                   variant="primary"
                   onPress={onLogout}
