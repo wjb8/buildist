@@ -102,6 +102,38 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
+        // For Google Play / production builds.
+        // Provide these via `android/gradle.properties`, environment variables, or EAS credentials.
+        release {
+            // Supports:
+            // - Local dev/prod signing via BUILDIST_UPLOAD_* (recommended to set in ~/.gradle/gradle.properties)
+            // - Gradle-injected signing props (used by some CI/EAS configurations)
+            def injectedStoreFile = project.findProperty("android.injected.signing.store.file")
+            def injectedStorePassword = project.findProperty("android.injected.signing.store.password")
+            def injectedKeyAlias = project.findProperty("android.injected.signing.key.alias")
+            def injectedKeyPassword = project.findProperty("android.injected.signing.key.password")
+
+            def storeFilePath =
+                injectedStoreFile ? String(injectedStoreFile) :
+                (project.findProperty("BUILDIST_UPLOAD_STORE_FILE") ?: System.getenv("BUILDIST_UPLOAD_STORE_FILE"))
+            def storePasswordValue =
+                injectedStorePassword ? String(injectedStorePassword) :
+                (project.findProperty("BUILDIST_UPLOAD_STORE_PASSWORD") ?: System.getenv("BUILDIST_UPLOAD_STORE_PASSWORD"))
+            def keyAliasValue =
+                injectedKeyAlias ? String(injectedKeyAlias) :
+                (project.findProperty("BUILDIST_UPLOAD_KEY_ALIAS") ?: System.getenv("BUILDIST_UPLOAD_KEY_ALIAS"))
+            def keyPasswordValue =
+                injectedKeyPassword ? String(injectedKeyPassword) :
+                (project.findProperty("BUILDIST_UPLOAD_KEY_PASSWORD") ?: System.getenv("BUILDIST_UPLOAD_KEY_PASSWORD"))
+
+            if (storeFilePath && storePasswordValue && keyAliasValue && keyPasswordValue) {
+                storeFile file(storeFilePath)
+                storePassword storePasswordValue
+                keyAlias keyAliasValue
+                keyPassword keyPasswordValue
+            }
+        }
     }
     buildTypes {
         debug {
@@ -110,7 +142,16 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (
+                signingConfigs.release.storeFile != null &&
+                signingConfigs.release.storePassword != null &&
+                signingConfigs.release.keyAlias != null &&
+                signingConfigs.release.keyPassword != null
+            ) {
+                signingConfig signingConfigs.release
+            } else {
+                throw new GradleException("Release signing is not configured. Do not upload debug-signed builds to Google Play. Set BUILDIST_UPLOAD_* signing properties.")
+            }
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

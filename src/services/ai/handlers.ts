@@ -51,7 +51,7 @@ export async function applyCreateRoad(args: CreateRoadArgs): Promise<ToolExecuti
       synced: false,
     });
   });
-  const idValue = createdId ? createdId.toHexString() : undefined;
+  const idValue = createdId ? (createdId as Realm.BSON.ObjectId).toHexString() : undefined;
   return { success: true, message: "Road created", data: { _id: idValue } };
 }
 
@@ -113,9 +113,7 @@ function pickAssetCandidates(
   } else if (args.by === "name") {
     matches = all.filter(
       (r) =>
-        typeof r?.name === "string" &&
-        r.name === args.value &&
-        (!args.type || r.type === args.type)
+        typeof r?.name === "string" && r.name === args.value && (!args.type || r.type === args.type)
     );
   } else if (args.by === "nameContains") {
     const q = args.value.toLowerCase();
@@ -197,7 +195,10 @@ export async function applyDeleteAsset(args: DeleteAssetArgs): Promise<ToolExecu
     return { success: false, message: "Asset not found" };
   }
   if (obj.type !== args.type) {
-    return { success: false, message: `Asset type mismatch: expected ${args.type}, found ${obj.type}` };
+    return {
+      success: false,
+      message: `Asset type mismatch: expected ${args.type}, found ${obj.type}`,
+    };
   }
   realm.write(() => {
     const linkedInspections = realm
@@ -288,9 +289,7 @@ export async function applyFindAsset(args: FindAssetArgs): Promise<ToolExecution
     if (!q) {
       results = filtered.map(serializeRealmObject);
     } else {
-      results = filtered
-        .filter((obj) => matchesAssetFuzzySearch(obj, q))
-        .map(serializeRealmObject);
+      results = filtered.filter((obj) => matchesAssetFuzzySearch(obj, q)).map(serializeRealmObject);
     }
   }
 
